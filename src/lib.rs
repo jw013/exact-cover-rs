@@ -18,8 +18,8 @@
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
-    /// Chooses the next item to cover, covers it and returns true. If there are no items left to
-    /// cover, processes the current solution and returns false.
+    /// Chooses the next item to cover, covers it and returns true. Returns false if there are no
+    /// items left to cover (indicating a solution has been found).
     ///
     /// "Covering an item" means to remove the item from the set of remaining items to cover and to
     /// remove all options that include the item from the set of available options.
@@ -327,6 +327,10 @@ impl Dlx {
     /// The selected item must not already be covered, and there must not be a current item already
     /// set.
     ///
+    /// Note that this method does not actually select an option, so in general, the next step
+    /// after calling this method should be to [`select_option`](Self::select_option) or
+    /// [`undo_item`](Self::undo_item) if no more options are available.
+    ///
     /// todo: should secondary items be prohibited?
     pub fn select_item(&mut self, item: usize) {
         debug_assert!(self.current_item.is_none());
@@ -335,7 +339,7 @@ impl Dlx {
         self.current_item = Some(item);
     }
 
-    /// Undoes [select_item](Self::select_item)
+    /// Undoes [select_item](Self::select_item).
     pub fn undo_item(&mut self) {
         let item = self.current_item.expect("Need something to undo");
         self.uncover(item);
@@ -382,7 +386,7 @@ impl Dlx {
         let option = option.0;
         debug_assert!(
             !self.is_item(option),
-            "option {} should not be item header",
+            "option {} must not be an item header",
             option
         );
         debug_assert_eq!(
@@ -402,8 +406,8 @@ impl Dlx {
     /// Undoes the most recent [`select_option`](Self::select_option) and returns the option that
     /// was deselected, or does nothing and returns `None` if there was nothing to undo.
     ///
-    /// This method should *not* be called when there is a *current item*. It restores the previous
-    /// current item.
+    /// This method must not be called when there is a *current item*. It restores the previous
+    /// current item if an option was undone.
     pub fn try_undo_option(&mut self) -> Option<DlxOption> {
         debug_assert!(self.current_item.is_none());
         self.selected_options
@@ -454,10 +458,10 @@ impl Dlx {
 
     // Removes item from header list and [hide]s all of its options
     fn cover(&mut self, item: usize) {
-        debug_assert!(self.is_item(item), "{} should be item", item);
+        debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
             !Self::is_removed(&self.h_links, item),
-            "{} should not already be covered",
+            "{} must not already be covered",
             item
         );
         let mut node = self.v_links[item].next;
@@ -469,10 +473,10 @@ impl Dlx {
     }
 
     fn uncover(&mut self, item: usize) {
-        debug_assert!(self.is_item(item), "{} should be item", item);
+        debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
             Self::is_removed(&self.h_links, item),
-            "{} should be covered",
+            "{} must be covered",
             item
         );
         let mut node = self.v_links[item].prev;
