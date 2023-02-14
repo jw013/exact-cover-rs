@@ -4,17 +4,19 @@
 //! exactly once.
 //!
 //! Donald Knuth's Algorithm X can find all solutions of any exact cover problem. From a high level,
-//! Algorithm X is a fairly general backtracking exhaustive search algorithm. At a lower level,
-//! Algorithm X cleverly manipulates linked lists to make backtracking more efficient for exact
-//! cover problems. This module separates these two levels: the backtracking search is implemented
-//! by the [`ExactCoverProblem`] trait, while the lower level operations and linked list data
-//! structure are implemented by the [`Dlx`] struct. Since there are many types of problems that can
-//! be reduced to exact cover problems or extensions thereof, this split arrangement gives the
-//! implementor more flexibility to customize the search algorithm for the specific problem at hand.
+//! Algorithm X is simply a backtracking exhaustive search algorithm. At a lower level, Algorithm X
+//! cleverly manipulates linked lists to make the backtracking more efficient. This module
+//! implements Algorithm X but separates the two levels: the backtracking search is implemented by
+//! the [`ExactCoverProblem`] trait, while the lower level linked list data structure and operations
+//! are implemented by the [`Dlx`] struct. Since there are many problems that can be reduced to
+//! exact cover problems or extensions thereof, this split arrangement gives the implementor more
+//! flexibility to customize the search algorithm for the specific problem at hand. For those
+//! looking to get started solving problems right away and do not need customization,
+//! [`MrvExactCoverSearch`] provides a ready-to-use implementation of `ExactCoverProblem`.
 //!
 //! The algorithms and data structures in this module, as well as the terminology of "options" and
 //! "items", come from Donald Knuth's <cite>The Art of Computer Programming, section 7.2.2</cite>,
-//! <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>
+//! <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
@@ -27,12 +29,10 @@ pub trait ExactCoverProblem {
     /// This method is intended for use by [`search`] and is not meant to be called manually.
     ///
     /// Through this method, implementations can control the order in which items are covered, which
-    /// can have a significant effect on the size of the search space (and thus amount of time a
-    /// search requires). A reasonable default strategy is to choose the item with the fewest
-    /// available options --- Knuth calls this the *minimum remaining values* (MRV) heuristic, but
-    /// notes that this may not be the best choice for all problems, particularly those with a large
-    /// number of low-information-value items that have few available options but contribute very
-    /// little progress towards narrowing the search space.
+    /// does not affect the number of solutions found but can have a significant effect on the size
+    /// of the search tree (i.e. how many branching dead ends are visited) and thus the amount of
+    /// time it takes to find a solution. See [`MrvExactCoverSearch`] for an implementation of this
+    /// trait using the *minimum remaining values* (MRV) heuristic.
     fn try_next_item(&mut self) -> bool;
 
     /// Selects an option that covers the current item (i.e. the item selected by the most recent
@@ -43,11 +43,14 @@ pub trait ExactCoverProblem {
     /// "Selecting an option" means to cover every item included in the selected option (except for
     /// the ones that are already covered).
     ///
-    /// Implementions should track which options have already been tried for the current item to
+    /// This method is intended for use by [`search`] and is not meant to be called manually.
+    ///
+    /// Implementors should track which options have already been tried for the current item to
     /// avoid redundant computations and infinite loops. Selecting an option that does not cover the
     /// current item will likely cause the search algorithm to return garbage results.
     ///
-    /// This method is intended for use by [`search`] and is not meant to be called manually.
+    /// This trait can be used to solve problems that are like exact cover but with extra
+    /// constraints by implementing those extra constraints in this method.
     fn select_option_or_undo_item(&mut self) -> bool;
 
     /// Undoes the most recent "select option" operation done by
@@ -66,8 +69,8 @@ pub trait ExactCoverProblem {
     /// As long as it returns `true`, this method may be called again to look for additional
     /// solutions --- each call will resume searching from where the last call returned.
     ///
-    /// The default implementation is the backtracking exhaustive search algorithm as described in
-    /// Algorithm X, but with the lower level operations abstracted away in the other trait methods.
+    /// The provided implementation is the backtracking exhaustive search algorithm as described in
+    /// Algorithm X, with the lower level operations abstracted away in the other trait methods.
     fn search(&mut self) -> bool {
         // todo: consider possibility of adding profiling and instrumentation like Knuth's version,
         //   e.g. progress indicator, counting of operations (mems), giving up if no solution found
@@ -163,9 +166,8 @@ pub struct DlxOption(usize);
 ///
 /// Some of the methods in this type have usage requirements that, if violated, are likely to
 /// silently corrupt the internal data structures leading to incorrect results and possibly panics.
-/// These methods include sanity checks that are implemented with [`debug_assert!`] for performance
-/// reasons, as `debug_assertions` are normally disabled in release builds but are enabled in test
-/// and debug builds.
+/// These methods include sanity checks some of which are implemented with [`debug_assert!`] for
+/// performance reasons. Thus, it is recommended to test with `debug_assertions` enabled.
 
 // ## Implementation Notes
 //
@@ -175,7 +177,8 @@ pub struct DlxOption(usize);
 // first row consists of item column headers and is joined into two circularly linked lists
 // (separate lists for primary and secondary items). Each column is joined as a circularly linked
 // list. "Spacer" pointer nodes are inserted around each row to facilitate wrapping around when
-// iterating over rows. In other words, the sparse matrix format is conceptually a `Vec<DlxNode>`:
+// iterating over rows, but rows are not otherwise linked because their layout is already
+// contiguous. In other words, the sparse matrix format is conceptually a `Vec<DlxNode>`:
 //
 // ```
 // enum DlxNode {
@@ -288,6 +291,7 @@ impl Dlx {
         for &item in option {
             assert!(self.is_item(item));
             // The sort requirement may not be strictly necessary, erring on the side of caution
+            // it also makes uniqueness easier to check
             assert!(
                 item > prev_item,
                 "option items must be unique and sorted ascending"
@@ -341,7 +345,7 @@ impl Dlx {
 
     /// Undoes [select_item](Self::select_item).
     pub fn undo_item(&mut self) {
-        let item = self.current_item.expect("Need something to undo");
+        let item = self.current_item.expect("Current item must be set");
         self.uncover(item);
         self.current_item = None;
     }
@@ -357,24 +361,14 @@ impl Dlx {
             .expect("Current item needs to be set to see available options");
         let prev = match prev {
             Some(DlxOption(option)) => {
-                debug_assert!(!self.is_item(option));
-                debug_assert_eq!(
-                    self.data[option],
-                    current_item,
-                    "prev argument {} must be from current item {}",
-                    option,
-                    current_item
-                );
+                debug_assert!(self.is_option(option));
+                debug_assert!(self.option_covers_current_item(option));
                 option
             }
             None => current_item,
         };
         let next = self.v_links[prev].next;
-        if self.is_item(next) {
-            None
-        } else {
-            Some(DlxOption(next))
-        }
+        (!self.is_item(next)).then_some(DlxOption(next))
     }
 
     /// Adds option to the candidate solution and covers all uncovered items included in the option.
@@ -384,18 +378,8 @@ impl Dlx {
     /// structure. When called it unsets the current item.
     pub fn select_option(&mut self, option: DlxOption) {
         let option = option.0;
-        debug_assert!(
-            !self.is_item(option),
-            "option {} must not be an item header",
-            option
-        );
-        debug_assert_eq!(
-            Some(self.data[option]),
-            self.current_item,
-            "option {} must be from currently selected item {:?}",
-            option,
-            self.current_item
-        );
+        debug_assert!(self.is_option(option));
+        debug_assert!(self.option_covers_current_item(option));
         self.for_other_cw(option, |dlx, i| {
             dlx.cover(dlx.data[i]);
         });
@@ -436,13 +420,13 @@ impl Dlx {
     /// Returns a slice of options in the currently selected solution, or `None` if not in a solved
     /// state. Use [`option_items`](Self::option_items) to get the items in the option.
     pub fn current_solution(&self) -> Option<&[DlxOption]> {
-        (self.h_links[0].next == 0).then_some(self.selected_options.as_slice())
+        (self.h_links[0].next == 0).then_some(&self.selected_options)
     }
 
     /// Returns a slice of item indices in the given option.
     pub fn option_items(&self, option: DlxOption) -> &[usize] {
         let option = option.0;
-        debug_assert!(!self.is_item(option));
+        debug_assert!(self.is_option(option));
         let mut spacer = option;
         while self.data[spacer] > 0 {
             spacer -= 1;
@@ -456,12 +440,20 @@ impl Dlx {
         i < self.h_links.len() - 1 && i > 0
     }
 
-    // Removes item from header list and [hide]s all of its options
+    fn is_option(&self, i: usize) -> bool {
+        i >= self.h_links.len() && i < self.data.len() && self.data[i] > 0
+    }
+
+    fn option_covers_current_item(&self, option: usize) -> bool {
+        self.current_item == Some(self.data[option])
+    }
+
+    // Removes item from header list and [`hide`]s all of its options
     fn cover(&mut self, item: usize) {
         debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
             !Self::is_removed(&self.h_links, item),
-            "{} must not already be covered",
+            "item {} must not already be covered",
             item
         );
         let mut node = self.v_links[item].next;
@@ -476,7 +468,7 @@ impl Dlx {
         debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
             Self::is_removed(&self.h_links, item),
-            "{} must be covered",
+            "item {} must be covered",
             item
         );
         let mut node = self.v_links[item].prev;
@@ -540,7 +532,7 @@ impl Dlx {
         }
     }
 
-    /// like [for_other_cw] but in the opposite direction, suitable for undoing
+    /// like [`for_other_cw`] but in the opposite direction, suitable for undoing
     fn for_other_ccw<F>(&mut self, node: usize, mut f: F)
     where
         F: FnMut(&mut Self, usize),
@@ -558,23 +550,26 @@ impl Dlx {
     }
 }
 
-/// An exact cover search implementation using the minimum-remaining-values (MRV) heuristic (see
-/// [`ExactCoverProblem::try_next_item`])
+/// An exact cover search implementation using the *minimum-remaining-values* (MRV) heuristic, i.e.
+/// items with the fewest available options are selected first.
+///
+/// This strategy generally works well on most exact cover problems to reduce the size of the search
+/// tree and find solutions faster. However, this is not true for all problems and there are
+/// certainly cases where this strategy is sub-optimal.
 pub struct MrvExactCoverSearch {
     dlx: Dlx,
     option_cursor: Option<DlxOption>,
 }
 
 impl MrvExactCoverSearch {
-    /// Creates a `MrvExactCoverSearch` from a pristine (meaning no items or options have been
-    /// selected) [`Dlx`] instance.
+    /// Creates a `MrvExactCoverSearch` from a [`Dlx`] instance.
     pub fn new(dlx: Dlx) -> Self {
         assert!(dlx.selected_options.is_empty() && dlx.current_item.is_none());
         Self { dlx, option_cursor: None, }
     }
 
-    /// Returns current solution (if available) in the form of options represented as slices of
-    /// items they contain.
+    /// Returns the current solution (if one has been found) in the form of options represented as
+    /// slices of items they cover.
     pub fn current_solution(&self) -> Option<impl IntoIterator<Item = &[usize]>> {
         self.dlx
             .current_solution()
