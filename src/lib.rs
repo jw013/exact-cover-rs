@@ -3,13 +3,12 @@
 //! union is the universe of items and whose pairwise intersections are all empty. In other words, a
 //! solution must cover each item exactly once.
 //!
-//! Any problem that involves placing a finite set of "objects" in a finite set of possible
-//! "positions" under some non-overlapping constraint can likely be reduced to (or formulated in
-//! terms of) an exact cover problem. One example is the [N Queens] puzzle, which, for example,
-//! tries to place 8 queens on a standard 8x8 chessboard such that no two queens can block each
-//! other's movement. Another example is the Sudoku, in which each cell in a 9x9 grid must be filled
-//! with one of the numbers 1-9 such that no column, row, or 3x3 sub-grid contains two of the same
-//! number.
+//! Any problem that involves placing a finite set of objects in a finite set of possible positions
+//! under some non-overlapping constraint can likely be reduced to (or formulated in terms of) an
+//! exact cover problem. One example is the [N Queens] puzzle, which, for example, tries to place 8
+//! queens on a standard 8x8 chessboard such that no two queens can block each other's movement.
+//! Another example is Sudoku, in which each cell in a 9x9 grid must be filled with one of the
+//! numbers 1-9 such that no column, row, or 3x3 sub-grid contains two of the same number.
 //!
 //! Donald Knuth's Algorithm X can find all solutions of any exact cover problem. From a high level,
 //! Algorithm X is simply a backtracking exhaustive search algorithm. At a lower level, Algorithm X
@@ -17,10 +16,9 @@
 //! implements Algorithm X but separates the two levels: the backtracking search is implemented by
 //! the [`ExactCoverProblem`] trait, while the lower level linked list data structure and operations
 //! are implemented by the [`Dlx`] struct. This split arrangement gives the implementor more
-//! flexibility to customize the search algorithm for the specific problem at hand. For those
-//! looking to get started solving problems right away and do not need customization,
-//! [`MrvExactCoverSearch`] provides a ready-to-use implementation of `ExactCoverProblem` built on
-//! `Dlx`.
+//! flexibility to customize the search algorithm for the specific problem at hand. A ready-to-use
+//! implementation of `ExactCoverProblem` built on `Dlx` can be found at [`MrvExactCoverSearch`],
+//! and its code can be helpful as a starting point for custom implementations.
 //!
 //! The algorithms and data structures in this module, as well as the terminology of "options" and
 //! "items", come from Donald Knuth's <cite>The Art of Computer Programming, section 7.2.2</cite>,
@@ -28,6 +26,17 @@
 //!
 //! [exact cover problem]: https://en.wikipedia.org/wiki/Exact_cover
 //! [N Queens]: https://en.wikipedia.org/wiki/Eight_queens_puzzle
+//!
+//! # Quick Start Roadmap
+//!
+//! 1. Map your problem to an exact cover problem.
+//! 2. Build the exact cover formulation with [`Dlx::new`] and [`Dlx::add_option`].
+//! 3. Pass the dlx instance to [`MrvExactCoverSearch::new`].
+//! 4. Call [`MrvExactCoverSearch::search`].
+//! 5. Check if a solution was found with [`MrvExactCoverSearch::current_solution`].
+//! 6. The solution is simply a list of options and will need to be mapped back into your problem.
+//! 7. _Optional_: if the last `search` returned true, steps 4-6 can be repeated to find more
+//!    solutions.
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
@@ -369,8 +378,6 @@ impl Dlx {
     /// Note that this method does not actually select an option, so in general, the next step
     /// after calling this method should be to [`select_option`](Self::select_option) or
     /// [`undo_item`](Self::undo_item) if no more options are available.
-    ///
-    /// todo: should secondary items be prohibited?
     pub fn select_item(&mut self, item: usize) {
         debug_assert!(self.current_item.is_none());
         debug_assert!(self.is_item(item));
@@ -588,9 +595,7 @@ impl Dlx {
 /// An exact cover search implementation using the *minimum-remaining-values* (MRV) heuristic, i.e.
 /// items with the fewest available options are selected first.
 ///
-/// This strategy generally works well on most exact cover problems to reduce the size of the search
-/// tree and find solutions faster. However, this is not true for all problems and there are
-/// certainly cases where this strategy is sub-optimal.
+/// See [Item Selection](trait.ExactCoverProblem.html#item-selection) for more details.
 pub struct MrvExactCoverSearch {
     dlx: Dlx,
     option_cursor: Option<DlxOption>,
