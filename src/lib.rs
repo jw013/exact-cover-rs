@@ -5,10 +5,10 @@
 //!
 //! Any problem that involves placing a finite set of objects in a finite set of possible positions
 //! under some non-overlapping constraint can likely be reduced to (or formulated in terms of) an
-//! exact cover problem. One example is the [N Queens] puzzle, which, for example, tries to place 8
-//! queens on a standard 8x8 chessboard such that no two queens can block each other's movement.
-//! Another example is Sudoku, in which each cell in a 9x9 grid must be filled with one of the
-//! numbers 1-9 such that no column, row, or 3x3 sub-grid contains two of the same number.
+//! exact cover problem. One example is the [N Queens] puzzle, which tries to place 8 queens on a
+//! standard 8x8 chessboard such that no two queens can block each other's movement. Another example
+//! is Sudoku, in which each cell in a 9x9 grid must be filled with one of the numbers 1-9 such that
+//! no column, row, or 3x3 sub-grid contains two of the same number.
 //!
 //! Donald Knuth's Algorithm X can find all solutions of any exact cover problem. From a high level,
 //! Algorithm X is simply a backtracking exhaustive search algorithm. At a lower level, Algorithm X
