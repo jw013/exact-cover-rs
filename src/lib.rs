@@ -1,22 +1,33 @@
-//! An *exact cover problem* consists of a universe of "items" and a set of "options" which are sets
-//! of items. A solution to the problem is a set of options whose union is the universe of items and
-//! whose pairwise intersections are all empty. In other words, a solution must cover each item
-//! exactly once.
+//! An *[exact cover problem]* is a mathematical problem that consists of a universe of "items" and
+//! a set of "options" which are sets of items. A solution to the problem is a set of options whose
+//! union is the universe of items and whose pairwise intersections are all empty. In other words, a
+//! solution must cover each item exactly once.
+//!
+//! Any problem that involves placing a finite set of "objects" in a finite set of possible
+//! "positions" under some non-overlapping constraint can likely be reduced to (or formulated in
+//! terms of) an exact cover problem. One example is the [N Queens] puzzle, which, for example,
+//! tries to place 8 queens on a standard 8x8 chessboard such that no two queens can block each
+//! other's movement. Another example is the Sudoku, in which each cell in a 9x9 grid must be filled
+//! with one of the numbers 1-9 such that no column, row, or 3x3 sub-grid contains two of the same
+//! number.
 //!
 //! Donald Knuth's Algorithm X can find all solutions of any exact cover problem. From a high level,
 //! Algorithm X is simply a backtracking exhaustive search algorithm. At a lower level, Algorithm X
 //! cleverly manipulates linked lists to make the backtracking more efficient. This module
 //! implements Algorithm X but separates the two levels: the backtracking search is implemented by
 //! the [`ExactCoverProblem`] trait, while the lower level linked list data structure and operations
-//! are implemented by the [`Dlx`] struct. Since there are many problems that can be reduced to
-//! exact cover problems or extensions thereof, this split arrangement gives the implementor more
+//! are implemented by the [`Dlx`] struct. This split arrangement gives the implementor more
 //! flexibility to customize the search algorithm for the specific problem at hand. For those
 //! looking to get started solving problems right away and do not need customization,
-//! [`MrvExactCoverSearch`] provides a ready-to-use implementation of `ExactCoverProblem`.
+//! [`MrvExactCoverSearch`] provides a ready-to-use implementation of `ExactCoverProblem` built on
+//! `Dlx`.
 //!
 //! The algorithms and data structures in this module, as well as the terminology of "options" and
 //! "items", come from Donald Knuth's <cite>The Art of Computer Programming, section 7.2.2</cite>,
 //! <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
+//!
+//! [exact cover problem]: https://en.wikipedia.org/wiki/Exact_cover
+//! [N Queens]: https://en.wikipedia.org/wiki/Eight_queens_puzzle
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
@@ -26,7 +37,7 @@ pub trait ExactCoverProblem {
     /// "Covering an item" means to remove the item from the set of remaining items to cover and to
     /// remove all options that include the item from the set of available options.
     ///
-    /// This method is intended for use by [`search`] and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
     ///
     /// Through this method, implementations can control the order in which items are covered, which
     /// does not affect the number of solutions found but can have a significant effect on the size
@@ -43,7 +54,7 @@ pub trait ExactCoverProblem {
     /// "Selecting an option" means to cover every item included in the selected option (except for
     /// the ones that are already covered).
     ///
-    /// This method is intended for use by [`search`] and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
     ///
     /// Implementors should track which options have already been tried for the current item to
     /// avoid redundant computations and infinite loops. Selecting an option that does not cover the
@@ -59,7 +70,7 @@ pub trait ExactCoverProblem {
     /// has exhausted the all possibilities or that searching has not yet started (due to the
     /// backtracking nature of the search algorithm, the two conditions are indistinguishable).
     ///
-    /// This method is intended for use by [`search`] and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
     fn try_undo_option(&mut self) -> bool;
 
     /// Searches for a solution and returns when one is found or when the entire search tree has
