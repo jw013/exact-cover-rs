@@ -136,7 +136,7 @@ struct DoubleIndexLink {
 }
 
 /// Created by [`Dlx::primary_items`]
-pub struct LinkIterator<'a> {
+struct LinkIterator<'a> {
     list: &'a [DoubleIndexLink],
     head: usize,
     cursor: usize,
@@ -418,7 +418,7 @@ impl Dlx {
     }
 
     /// Returns an iterator over the remaining uncovered primary items.
-    pub fn primary_items(&self) -> LinkIterator {
+    pub fn primary_items(&self) -> impl Iterator<Item = usize> + '_ {
         LinkIterator::from_slice(&self.h_links, 0)
     }
 
