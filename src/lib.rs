@@ -37,13 +37,34 @@ pub trait ExactCoverProblem {
     /// "Covering an item" means to remove the item from the set of remaining items to cover and to
     /// remove all options that include the item from the set of available options.
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
+    /// manually.
     ///
-    /// Through this method, implementations can control the order in which items are covered, which
-    /// does not affect the number of solutions found but can have a significant effect on the size
-    /// of the search tree (i.e. how many branching dead ends are visited) and thus the amount of
-    /// time it takes to find a solution. See [`MrvExactCoverSearch`] for an implementation of this
-    /// trait using the *minimum remaining values* (MRV) heuristic.
+    /// # Item Selection
+    ///
+    /// A naive exhaustive search could find all solutions by simply selecting options one at a
+    /// time, branching at each step to explore all possibilities. The backtracking `search`
+    /// algorithm is a bit more clever --- it alternates between choosing (without branching)[^1] an
+    /// item to cover and branching on options that cover the selected item. This approach still
+    /// finds every possible solution but with two benefits over the naive approach: (1) it reduces
+    /// the branching factor (number of possible alternatives) since the set of options that cover
+    /// any particular item is usually much smaller than the set of all remaining options, and (2)
+    /// it can detect a dead-end as soon as any item has no remaining options to cover it, and does
+    /// not have to wait until it runs out of all options.
+    ///
+    /// The branching factor can be reduced by selecting items with few choices for options. Knuth
+    /// calls this the *minimum remaining values (MRV)* heuristic. Reducing the branching factor
+    /// generally results in smaller search trees but there may exist exact cover problems where
+    /// another item-selection strategy is more efficient than MRV (e.g. by trading increased
+    /// branching factor for reduced search depth).
+    ///
+    /// The item selection strategy can be customized by implementations of this method. See
+    /// [`MrvExactCoverSearch`] for an implementation using the MRV heuristic.
+    ///
+    /// [^1]: It is not necessary to branch on the choice of item. All required items will
+    /// eventually be covered by any valid solution, so any sequence of item choices will still find
+    /// all solutions. Branching on the item choice would result in the same solutions being found
+    /// with a different ordering of options.
     fn try_next_item(&mut self) -> bool;
 
     /// Selects an option that covers the current item (i.e. the item selected by the most recent
@@ -54,14 +75,16 @@ pub trait ExactCoverProblem {
     /// "Selecting an option" means to cover every item included in the selected option (except for
     /// the ones that are already covered).
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
+    /// manually.
     ///
     /// Implementors should track which options have already been tried for the current item to
     /// avoid redundant computations and infinite loops. Selecting an option that does not cover the
     /// current item will likely cause the search algorithm to return garbage results.
     ///
-    /// This trait can be used to solve problems that are like exact cover but with extra
-    /// constraints by implementing those extra constraints in this method.
+    /// Implementors are free to filter out options using any additional criteria, which can be
+    /// useful for solving problems that are like exact cover with some extra constraints that
+    /// cannot be captured as items.
     fn select_option_or_undo_item(&mut self) -> bool;
 
     /// Undoes the most recent "select option" operation done by
@@ -70,7 +93,8 @@ pub trait ExactCoverProblem {
     /// has exhausted the all possibilities or that searching has not yet started (due to the
     /// backtracking nature of the search algorithm, the two conditions are indistinguishable).
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called manually.
+    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
+    /// manually.
     fn try_undo_option(&mut self) -> bool;
 
     /// Searches for a solution and returns when one is found or when the entire search tree has
