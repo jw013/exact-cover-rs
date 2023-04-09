@@ -72,8 +72,8 @@ pub trait ExactCoverProblem {
     ///
     /// [^1]: It is not necessary to branch on the choice of item. All required items will
     /// eventually be covered by any valid solution, so any sequence of item choices will still find
-    /// all solutions. Branching on the item choice would result in the same solutions being found
-    /// with a different ordering of options.
+    /// all solutions. Branching on the item choice would actually cause the same solutions to be
+    /// found multiple times, perhaps with a different ordering of options.
     fn try_next_item(&mut self) -> bool;
 
     /// Selects an option that covers the current item (i.e. the item selected by the most recent
@@ -219,14 +219,23 @@ pub struct DlxOption(usize);
 // rows corresponding to options. Internally, the matrix is represented in a "sparse" condensed
 // layout with non-zero entries converted to linked list nodes and empty / zero entries omitted. The
 // first row consists of item column headers and is joined into two circularly linked lists
-// (separate lists for primary and secondary items). Each column is joined as a circularly linked
-// list. "Spacer" pointer nodes are inserted around each row to facilitate wrapping around when
-// iterating over rows, but rows are not otherwise linked because their layout is already
-// contiguous. In other words, the sparse matrix format is conceptually a `Vec<DlxNode>`:
+// (separate lists for primary and secondary items) with a separate header node for each list that
+// does not correspond to any item. Each item column is joined as a circularly linked list using the
+// item header as the list header node. "Spacer" pointer nodes are inserted around each option row
+// to facilitate wrapping around when iterating over rows, but option rows are not otherwise linked
+// because their layout is already contiguous. In other words, the sparse matrix format is
+// conceptually a `Vec<DlxNode>`:
 //
 // ```
 // enum DlxNode {
-//     Header {
+//     PrimaryItemsHeader {
+//         h_link: DoubleIndexLink,
+//     },
+//     SecondaryItemsHeaderAndSpacer {
+//         h_link: DoubleIndexLink,
+//         wrap_links: DoubleIndexLink,
+//     },
+//     ItemColumnHeader {
 //         h_link: DoubleIndexLink,
 //         v_link: DoubleIndexLink,
 //         len: usize,
@@ -237,7 +246,6 @@ pub struct DlxOption(usize);
 //     },
 //     Spacer {
 //         wrap_links: DoubleIndexLink,
-//         _unused: usize,
 //     }
 // }
 // ```
@@ -246,8 +254,9 @@ pub struct DlxOption(usize);
 // Structures simply because that is how Knuth described it (it's also a bit more memory efficient).
 //
 // List pointers are implemented as integer indices into Vec's. Items occupy indices 1..=num_items,
-// followed immediately by option and spacer nodes. The very first spacer node does double duty as
-// the header node for the secondary items list.
+// followed immediately by option and spacer nodes. The PrimaryItemsHeader is always index 0, while
+// the SecondaryItemsHeaderAndSpacer is index `num_items + 1` and pulls double duty as the first
+// spacer node for the first option row.
 pub struct Dlx {
     /// horizontal links for item header row
     h_links: Vec<DoubleIndexLink>,
@@ -436,16 +445,14 @@ impl Dlx {
     /// current item if an option was undone.
     pub fn try_undo_option(&mut self) -> Option<DlxOption> {
         debug_assert!(self.current_item.is_none());
-        self.selected_options
-            .pop()
-            .map(|DlxOption(last_option)| {
-                self.current_item = Some(self.data[last_option]);
-                // It is important that this for_other go in the reverse order of select_option.
-                self.for_other_ccw(last_option, |dlx, i| {
-                    dlx.uncover(dlx.data[i]);
-                });
-                DlxOption(last_option)
-            })
+        self.selected_options.pop().map(|DlxOption(last_option)| {
+            self.current_item = Some(self.data[last_option]);
+            // It is important that this for_other go in the reverse order of select_option.
+            self.for_other_ccw(last_option, |dlx, i| {
+                dlx.uncover(dlx.data[i]);
+            });
+            DlxOption(last_option)
+        })
     }
 
     /// Returns an iterator over the remaining uncovered primary items.
@@ -605,7 +612,10 @@ impl MrvExactCoverSearch {
     /// Creates a `MrvExactCoverSearch` from a [`Dlx`] instance.
     pub fn new(dlx: Dlx) -> Self {
         assert!(dlx.selected_options.is_empty() && dlx.current_item.is_none());
-        Self { dlx, option_cursor: None, }
+        Self {
+            dlx,
+            option_cursor: None,
+        }
     }
 
     /// Returns the current solution (if one has been found) in the form of options represented as
@@ -618,8 +628,7 @@ impl MrvExactCoverSearch {
 }
 
 impl ExactCoverProblem for MrvExactCoverSearch {
-    /// Chooses the item with the fewest available options. Does not handle solutions (use
-    /// [`current_solution`](Self::current_solution) instead).
+    /// Chooses an item with the fewest available options.
     fn try_next_item(&mut self) -> bool {
         self.dlx
             .primary_items()
@@ -833,7 +842,11 @@ mod tests {
 
         // exactly one solution expected
         assert!(ec.search());
-        let solution = ec.current_solution().unwrap().into_iter().collect::<Vec<_>>();
+        let solution = ec
+            .current_solution()
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<_>>();
         assert_eq!(solution, [&[1, 4, 6][..], &[2, 7], &[3, 5],]);
 
         assert!(!ec.search());
