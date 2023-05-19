@@ -168,6 +168,34 @@ struct DoubleIndexLink {
     next: usize,
 }
 
+trait DoubleIndexLinkedList {
+    fn remove_links(&mut self, target: usize);
+    fn restore_links(&mut self, target: usize);
+    fn is_removed(&self, target: usize) -> bool;
+}
+
+impl<T> DoubleIndexLinkedList for T
+where
+    T: core::ops::IndexMut<usize, Output = DoubleIndexLink>,
+{
+    fn remove_links(&mut self, target: usize) {
+        let DoubleIndexLink { prev, next } = self[target];
+        self[prev].next = next;
+        self[next].prev = prev;
+    }
+
+    fn restore_links(&mut self, target: usize) {
+        let DoubleIndexLink { prev, next } = self[target];
+        self[prev].next = target;
+        self[next].prev = target;
+    }
+
+    fn is_removed(&self, target: usize) -> bool {
+        let DoubleIndexLink { prev, next } = self[target];
+        !(self[prev].next == target && self[next].prev == target)
+    }
+}
+
 /// Created by [`Dlx::primary_items`]
 struct LinkIterator<'a> {
     list: &'a [DoubleIndexLink],
@@ -501,7 +529,7 @@ impl Dlx {
     fn cover(&mut self, item: usize) {
         debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
-            !Self::is_removed(&self.h_links, item),
+            !self.h_links.is_removed(item),
             "item {} must not already be covered",
             item
         );
@@ -510,13 +538,13 @@ impl Dlx {
             self.hide(node);
             node = self.v_links[node].next;
         }
-        Self::remove(&mut self.h_links, item);
+        self.h_links.remove_links(item);
     }
 
     fn uncover(&mut self, item: usize) {
         debug_assert!(self.is_item(item), "{} must be an item", item);
         debug_assert!(
-            Self::is_removed(&self.h_links, item),
+            self.h_links.is_removed(item),
             "item {} must be covered",
             item
         );
@@ -525,30 +553,13 @@ impl Dlx {
             self.unhide(node);
             node = self.v_links[node].prev;
         }
-        Self::unremove(&mut self.h_links, item);
-    }
-
-    fn remove(list: &mut [DoubleIndexLink], i: usize) {
-        let DoubleIndexLink { prev, next } = list[i];
-        list[prev].next = next;
-        list[next].prev = prev;
-    }
-
-    fn unremove(list: &mut [DoubleIndexLink], i: usize) {
-        let DoubleIndexLink { prev, next } = list[i];
-        list[prev].next = i;
-        list[next].prev = i;
-    }
-
-    fn is_removed(list: &[DoubleIndexLink], i: usize) -> bool {
-        let DoubleIndexLink { prev, next } = list[i];
-        !(list[prev].next == i && list[next].prev == i)
+        self.h_links.restore_links(item);
     }
 
     /// remove option from all items except the one corresponding to the start `node`
     fn hide(&mut self, node: usize) {
         self.for_other_cw(node, |dlx, i| {
-            Self::remove(&mut dlx.v_links, i);
+            dlx.v_links.remove_links(i);
             let item = dlx.data[i];
             dlx.data[item] -= 1;
         });
@@ -556,7 +567,7 @@ impl Dlx {
 
     fn unhide(&mut self, node: usize) {
         self.for_other_ccw(node, |dlx, i| {
-            Self::unremove(&mut dlx.v_links, i);
+            dlx.v_links.restore_links(i);
             let item = dlx.data[i];
             dlx.data[item] += 1;
         });
