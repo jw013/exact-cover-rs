@@ -1,42 +1,61 @@
-//! An *[exact cover problem]* is a mathematical problem that consists of a universe of "items" and
-//! a set of "options" which are sets of items. A solution to the problem is a set of options whose
-//! union is the universe of items and whose pairwise intersections are all empty. In other words, a
-//! solution must cover each item exactly once.
+//! An *[exact cover problem]* is a mathematical problem that consists of a
+//! universe of "items" and a set of "options" which are sets of items. A
+//! solution to the problem is a set of pairwise disjoint options whose union is
+//! the universe of items. In other words, a solution must include each item in
+//! exactly one option.
 //!
-//! Any problem that involves placing a finite set of objects in a finite set of possible positions
-//! under some non-overlapping constraint can likely be reduced to (or formulated in terms of) an
-//! exact cover problem. One example is the [N Queens] puzzle, which tries to place 8 queens on a
-//! standard 8x8 chessboard such that no two queens can block each other's movement. Another example
-//! is Sudoku, in which each cell in a 9x9 grid must be filled with one of the numbers 1-9 such that
-//! no column, row, or 3x3 sub-grid contains two of the same number.
+//! Any problem that involves placing a finite set of objects in a finite set of
+//! possible positions under some non-overlapping constraint can likely be
+//! reduced to (or formulated in terms of) an exact cover problem. Every
+//! position that can be occupied can be modeled as an "item", and every
+//! possible placement of an object is an "option" that covers the set of items
+//! (positions) it occupies. One example is the [N Queens] puzzle, which tries
+//! to place 8 queens on a standard 8x8 chessboard such that no two queens can
+//! block each other's movement - the 64 squares are the items and each queen
+//! placement covers the square the queen is on as well as all squares it can
+//! move to. Another example is [Sudoku], in which each cell in a 9x9 grid must
+//! be filled with one of the numbers 1-9 such that no column, row, or 3x3
+//! sub-grid contains two of the same number. Any placement of a number in a
+//! cell corresponds to an option covering 4 items: 1 item for filling that
+//! specific cell with any number, and 3 separate items for filling that row,
+//! column, and 3x3 box with that specific number.
 //!
-//! Donald Knuth's Algorithm X can find all solutions of any exact cover problem. From a high level,
-//! Algorithm X is simply a backtracking exhaustive search algorithm. At a lower level, Algorithm X
-//! cleverly manipulates linked lists to make the backtracking more efficient. This module
-//! implements Algorithm X but separates the two levels: the backtracking search is implemented by
-//! the [`ExactCoverProblem`] trait, while the lower level linked list data structure and operations
-//! are implemented by the [`Dlx`] struct. This split arrangement gives the implementor more
-//! flexibility to customize the search algorithm for the specific problem at hand. A ready-to-use
-//! implementation of `ExactCoverProblem` built on `Dlx` can be found at [`MrvExactCoverSearch`],
-//! and its code can be helpful as a starting point for custom implementations.
+//! Donald Knuth's Algorithm X can find all solutions of any exact cover
+//! problem. From a high level, Algorithm X is simply a backtracking exhaustive
+//! search algorithm. At a lower level, Algorithm X cleverly manipulates linked
+//! lists to make the backtracking more efficient. This module implements
+//! Algorithm X but separates the two levels: the backtracking search is
+//! implemented by the [`ExactCoverProblem`] trait, while the lower level linked
+//! list data structure and operations are implemented by the [`Dlx`] struct.
+//! This split arrangement gives the implementor more flexibility to customize
+//! the search algorithm for the specific problem at hand. A ready-to-use
+//! implementation of `ExactCoverProblem` built on `Dlx` can be found at
+//! [`MrvExactCoverSearch`], and its code can be helpful as a starting point for
+//! custom implementations.
 //!
-//! The algorithms and data structures in this module, as well as the terminology of "options" and
-//! "items", come from Donald Knuth's <cite>The Art of Computer Programming, section 7.2.2</cite>,
+//! The algorithms and data structures in this module, as well as the
+//! terminology of "options" and "items", come from Donald Knuth's <cite>The Art
+//! of Computer Programming, section 7.2.2</cite>,
 //! <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
 //!
 //! [exact cover problem]: https://en.wikipedia.org/wiki/Exact_cover
 //! [N Queens]: https://en.wikipedia.org/wiki/Eight_queens_puzzle
+//! [Sudoku]: https://en.wikipedia.org/wiki/Sudoku
 //!
 //! # Quick Start Roadmap
 //!
 //! 1. Map your problem to an exact cover problem.
-//! 2. Build the exact cover formulation with [`Dlx::new`] and [`Dlx::add_option`].
-//! 3. Pass the dlx instance to [`MrvExactCoverSearch::new`].
+//! 2. Build the exact cover formulation with [`DlxBuilder::new`] and
+//!    [`DlxBuilder::add_option`].
+//! 3. When finished building, call [`DlxBuilder::build`] and pass the result to
+//!    [`MrvExactCoverSearch::new`].
 //! 4. Call [`MrvExactCoverSearch::search`].
-//! 5. Check if a solution was found with [`MrvExactCoverSearch::current_solution`].
-//! 6. The solution is simply a list of options and will need to be mapped back into your problem.
-//! 7. _Optional_: if the last `search` returned true, steps 4-6 can be repeated to find more
-//!    solutions.
+//! 5. Check if a solution was found with
+//!    [`MrvExactCoverSearch::current_solution`].
+//! 6. The solution is simply a list of options and will need to be mapped back
+//!    into a more usable form for your problem (i.e. the reverse of step 1).
+//! 7. _Optional_: if the last `search` returned true, steps 4-6 can be repeated
+//!    to find more solutions.
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
@@ -44,7 +63,7 @@ pub trait ExactCoverProblem {
     /// items left to cover (indicating a solution has been found).
     ///
     /// "Covering an item" means to remove the item from the set of remaining items to cover and to
-    /// remove all options that include the item from the set of available options.
+    /// mark all options that include the item as unavailable for covering other items.
     ///
     /// This method is intended for use by [`search`](Self::search) and is not meant to be called
     /// manually.
@@ -230,16 +249,144 @@ impl<'a> LinkIterator<'a> {
 #[derive(Copy, Clone)]
 pub struct DlxOption(usize);
 
-/// "Dancing links" data structure described by Knuth for solving exact cover problems. See
-/// [module](self) documentation for additional details.
+/// Builder for [`Dlx`]
+pub struct DlxBuilder {
+    dlx: Dlx,
+}
+
+impl DlxBuilder {
+    /// Creates an empty Dlx instance with the specified number of primary and
+    /// secondary items but no options. Primary items are automatically numbered
+    /// starting at 1 and secondary item numbers follow consecutively after
+    /// primary items.
+    ///
+    /// # Panics
+    ///
+    /// If too many items (`n_primary + n_secondary`) exceeds memory or `usize`
+    /// limitations.
+    pub fn new(n_primary: usize, n_secondary: usize) -> Self {
+        let n = n_primary.checked_add(n_secondary).expect("Too many items");
+        let len = n.checked_add(2).expect("Too many items");
+        let mut dlx = Dlx {
+            h_links: Vec::with_capacity(len),
+            v_links: Vec::with_capacity(len),
+            data: vec![0; len],
+            selected_options: Vec::new(),
+            current_item: None,
+        };
+
+        // Initialize hlinks to two separate circular doubly linked lists:
+        // primary items list has 0 as its header node; secondary items list header is at n + 1
+        dlx.h_links.push(DoubleIndexLink {
+            prev: n_primary,
+            next: 1,
+        });
+        for i in 1..=n {
+            dlx.h_links.push(DoubleIndexLink {
+                prev: i - 1,
+                next: i + 1,
+            });
+        }
+        dlx.h_links.push(DoubleIndexLink {
+            prev: n,
+            next: n_primary + 1,
+        });
+        dlx.h_links[n_primary].next = 0;
+        dlx.h_links[n_primary + 1].prev = n + 1;
+
+        // item (column) headers
+        // 0-th entry is unused
+        for i in 0..=n {
+            dlx.v_links.push(DoubleIndexLink { prev: i, next: i });
+        }
+        // first row spacer node
+        dlx.v_links.push(DoubleIndexLink { prev: 0, next: 0 });
+        Self { dlx }
+    }
+
+    /// Adds option represented as a sorted (ascending order) collection of
+    /// unique item indices.
+    ///
+    /// Item indices start at 1 (index 0 is reserved). Empty options are
+    /// silently ignored.
+    ///
+    /// # Panics
+    ///
+    /// * If an item index is encountered that is outside the bounds established
+    ///   by the [`new`](Self::new) call (`> n_primary + n_secondary`).
+    /// * If option items are not listed in ascending order or include duplicate
+    ///   items
+    pub fn add_option<'a, I: IntoIterator<Item = &'a usize>>(&mut self, option: I) {
+        // adding options while a search is in progress is a terrible idea
+        // todo: support pre-selecting options, useful for building some puzzles subtractively
+        //   - pre-selected options must not conflict with each other
+        //   - regular options that conflict with pre-selected options are not added
+        //   - pre-selected option cannot be undone during search
+        // todo: use typestate to enforce this at compile-time
+        //     state - building
+        //       - add_option
+        //       - start search (i.e. select item)
+        //     state - searching item - select item
+        //     state - searching option - select option for current item state
+
+        let prev_spacer = self.dlx.v_links.len() - 1;
+        let mut prev_item = 0; // 0 is not a valid item so we can use it as -INFINITY
+        let mut current = prev_spacer;
+        for &item in option {
+            assert!(self.dlx.is_item(item));
+            // The sort requirement may not be strictly necessary, erring on the side of caution
+            // it also makes uniqueness easier to check
+            assert!(
+                item > prev_item,
+                "option items must be unique and sorted ascending"
+            );
+            prev_item = item;
+
+            let old_bottom = self.dlx.v_links[item].prev;
+            self.dlx.v_links.push(DoubleIndexLink {
+                prev: old_bottom,
+                next: item,
+            });
+            self.dlx.data.push(item);
+            current += 1;
+            self.dlx.v_links[item].prev = current;
+            self.dlx.v_links[old_bottom].next = current;
+
+            self.dlx.data[item] += 1; // len
+        }
+        if current == prev_spacer {
+            // empty iterator
+            return;
+        }
+        self.dlx.v_links[prev_spacer].next = current;
+        // next spacer
+        self.dlx.data.push(0); // spacer
+        self.dlx.v_links.push(DoubleIndexLink {
+            prev: prev_spacer + 1,
+            next: 0,
+        });
+    }
+
+    pub fn build(self) -> Dlx {
+        self.dlx
+    }
+}
+
+/// Lower level "dancing links" data structure described by Knuth for solving
+/// exact cover problems. You probably don't need to work with this type
+/// directly unless you are creating a custom implementation of
+/// [`ExactCoverProblem`]. See [module](self) documentation for additional
+/// details on how to use the default implementation.
 ///
-/// This implementation supports optional secondary items which can be covered 0 or 1 times in a
-/// solution, as the search algorithm needs no modifications to support this extension.
+/// `Dlx` supports optional secondary items which can be covered 0 or 1 times in
+/// a valid solution, as the [`ExactCoverProblem::search`] algorithm needs no
+/// modifications to support this extension.
 ///
-/// Some of the methods in this type have usage requirements that, if violated, are likely to
-/// silently corrupt the internal data structures leading to incorrect results and possibly panics.
-/// These methods include sanity checks some of which are implemented with [`debug_assert!`] for
-/// performance reasons. Thus, it is recommended to test with `debug_assertions` enabled.
+/// Because this data structure involves rewriting linked list pointers on the
+/// fly, calling its methods in the wrong order will likely silently corrupt the
+/// links and yield garbage results. Read the documentation on its methods
+/// carefully. Enable [`debug_assert!`] for some additional sanity checks when
+/// debugging.
 
 // ## Implementation Notes
 //
@@ -304,110 +451,10 @@ pub struct Dlx {
 }
 
 impl Dlx {
-    /// Creates a Dlx instance with the specified number of primary (required) and secondary
-    /// (optional) items, but no options. Primary items are automatically numbered starting at 1,
-    /// and secondary item numbers follow consecutively after primary items.
-    pub fn new(n_primary: usize, n_secondary: usize) -> Self {
-        let n = n_primary.checked_add(n_secondary).expect("Too many items");
-        let len = n.checked_add(2).expect("Too many items");
-        let mut ret = Self {
-            h_links: Vec::with_capacity(len),
-            v_links: Vec::with_capacity(len),
-            data: vec![0; len],
-            selected_options: Vec::new(),
-            current_item: None,
-        };
-
-        // Initialize hlinks to two separate circular doubly linked lists:
-        // primary items list has 0 as its header node; secondary items list header is at n + 1
-        ret.h_links.push(DoubleIndexLink {
-            prev: n_primary,
-            next: 1,
-        });
-        for i in 1..=n {
-            ret.h_links.push(DoubleIndexLink {
-                prev: i - 1,
-                next: i + 1,
-            });
-        }
-        ret.h_links.push(DoubleIndexLink {
-            prev: n,
-            next: n_primary + 1,
-        });
-        ret.h_links[n_primary].next = 0;
-        ret.h_links[n_primary + 1].prev = n + 1;
-
-        // item (column) headers
-        // 0-th entry is unused
-        for i in 0..=n {
-            ret.v_links.push(DoubleIndexLink { prev: i, next: i });
-        }
-        // first row spacer node
-        ret.v_links.push(DoubleIndexLink { prev: 0, next: 0 });
-        ret
-    }
-
-    /// Adds option represented as a sorted (ascending order) collection of unique item indices.
-    ///
-    /// Item indices start at 1 (index 0 is reserved). Empty options are silently ignored. Panics if
-    /// the above requirements are not met. Do not call this method when a search for a solution is
-    /// in progress.
-    pub fn add_option<'a, I: IntoIterator<Item = &'a usize>>(&mut self, option: I) {
-        // adding options while a search is in progress is a terrible idea
-        // todo: support pre-selecting options, useful for building some puzzles subtractively
-        //   - pre-selected options must not conflict with each other
-        //   - regular options that conflict with pre-selected options are not added
-        //   - pre-selected option cannot be undone during search
-        // todo: use typestate to enforce this at compile-time
-        //     state - building
-        //       - add_option
-        //       - start search (i.e. select item)
-        //     state - searching item - select item
-        //     state - searching option - select option for current item state
-        assert!(self.selected_options.is_empty() && self.current_item.is_none());
-
-        let prev_spacer = self.v_links.len() - 1;
-        let mut prev_item = 0; // 0 is not a valid item so we can use it as -INFINITY
-        let mut current = prev_spacer;
-        for &item in option {
-            assert!(self.is_item(item));
-            // The sort requirement may not be strictly necessary, erring on the side of caution
-            // it also makes uniqueness easier to check
-            assert!(
-                item > prev_item,
-                "option items must be unique and sorted ascending"
-            );
-            prev_item = item;
-
-            let old_bottom = self.v_links[item].prev;
-            self.v_links.push(DoubleIndexLink {
-                prev: old_bottom,
-                next: item,
-            });
-            self.data.push(item);
-            current += 1;
-            self.v_links[item].prev = current;
-            self.v_links[old_bottom].next = current;
-
-            self.data[item] += 1; // len
-        }
-        if current == prev_spacer {
-            // empty iterator
-            return;
-        }
-        self.v_links[prev_spacer].next = current;
-        // next spacer
-        self.data.push(0); // spacer
-        self.v_links.push(DoubleIndexLink {
-            prev: prev_spacer + 1,
-            next: 0,
-        });
-    }
-
     /// Covers `item` and sets it as the *current item*.
     ///
-    /// Covering an item removes it from the set of outstanding uncovered items and removes all
-    /// options that contain it from the set of available options.
+    /// Covering an item removes it from the set of outstanding uncovered items and marks all
+    /// options that contain it as unavailabe for covering other options.
     ///
     /// The selected item must not already be covered, and there must not be a current item already
     /// set.
@@ -453,8 +500,7 @@ impl Dlx {
     /// Adds option to the candidate solution and covers all uncovered items included in the option.
     ///
     /// This method must only be called when there is a *current item* set, and the option argument
-    /// must include the current item. Violating these conditions will likely corrupt the data
-    /// structure. When called it unsets the current item.
+    /// must include the current item. When called it unsets the current item.
     pub fn select_option(&mut self, option: DlxOption) {
         let option = option.0;
         debug_assert!(self.is_option(option));
@@ -514,11 +560,11 @@ impl Dlx {
     // private helper methods
 
     fn is_item(&self, i: usize) -> bool {
-        i < self.h_links.len() - 1 && i > 0
+        (1..self.h_links.len() - 1).contains(&i)
     }
 
     fn is_option(&self, i: usize) -> bool {
-        i >= self.h_links.len() && i < self.data.len() && self.data[i] > 0
+        (self.h_links.len()..self.data.len()).contains(&i) && self.data[i] > 0
     }
 
     fn option_covers_current_item(&self, option: usize) -> bool {
@@ -556,7 +602,7 @@ impl Dlx {
         self.h_links.restore_links(item);
     }
 
-    /// remove option from all items except the one corresponding to the start `node`
+    /// remove option from all items except the one corresponding to `node`
     fn hide(&mut self, node: usize) {
         self.for_other_cw(node, |dlx, i| {
             dlx.v_links.remove_links(i);
@@ -629,8 +675,8 @@ impl MrvExactCoverSearch {
         }
     }
 
-    /// Returns the current solution (if one has been found) in the form of options represented as
-    /// slices of items they cover.
+    /// Returns the current solution (if one has been found) as a collection of
+    /// "options", i.e. slices of items they cover.
     pub fn current_solution(&self) -> Option<impl IntoIterator<Item = &[usize]>> {
         self.dlx
             .current_solution()
@@ -698,7 +744,7 @@ mod tests {
 
     #[test]
     fn test_dlx_new() {
-        let x = Dlx::new(4, 3);
+        let x = DlxBuilder::new(4, 3).dlx;
         assert_eq!(count_items_forward(&x.h_links, 0), 4);
         assert_eq!(count_items_backward(&x.h_links, 0), 4);
         assert_eq!(count_items_forward(&x.h_links, x.h_links.len() - 1), 3);
@@ -710,7 +756,7 @@ mod tests {
 
     #[test]
     fn test_dlx_empty() {
-        let x = Dlx::new(0, 0);
+        let x = DlxBuilder::new(0, 0).dlx;
         assert_eq!(count_items_forward(&x.h_links, 0), 0);
         assert_eq!(count_items_backward(&x.h_links, 0), 0);
         assert_eq!(count_items_forward(&x.h_links, 1), 0);
@@ -719,13 +765,14 @@ mod tests {
 
     #[test]
     fn test_dlx_knuth_example() {
-        let mut x = Dlx::new(7, 0);
+        let mut x = DlxBuilder::new(7, 0);
         x.add_option(&[3, 5]);
         x.add_option(&[1, 4, 7]);
         x.add_option(&[2, 3, 6]);
         x.add_option(&[1, 4, 6]);
         x.add_option(&[2, 7]);
         x.add_option(&[4, 5, 7]);
+        let mut x = x.build();
 
         assert_eq!(x.data.len(), 31);
         assert_eq!(x.v_links.len(), 31);
@@ -841,7 +888,7 @@ mod tests {
 
     #[test]
     fn solve_knuth_example() {
-        let mut x = Dlx::new(7, 0);
+        let mut x = DlxBuilder::new(7, 0);
         x.add_option(&[3, 5]);
         x.add_option(&[1, 4, 7]);
         x.add_option(&[2, 3, 6]);
@@ -849,7 +896,7 @@ mod tests {
         x.add_option(&[2, 7]);
         x.add_option(&[4, 5, 7]);
 
-        let mut ec = MrvExactCoverSearch::new(x);
+        let mut ec = MrvExactCoverSearch::new(x.build());
 
         // exactly one solution expected
         assert!(ec.search());
