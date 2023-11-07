@@ -316,7 +316,7 @@ impl DlxBuilder {
     ///   by the [`new`](Self::new) call (`> n_primary + n_secondary`).
     /// * If option items are not listed in ascending order or include duplicate
     ///   items
-    pub fn add_option<'a, I: IntoIterator<Item = &'a usize>>(&mut self, option: I) {
+    pub fn add_option<'a, I: IntoIterator<Item = &'a usize>>(&mut self, option: I) -> &mut Self {
         // adding options while a search is in progress is a terrible idea
         // todo: support pre-selecting options, useful for building some puzzles subtractively
         //   - pre-selected options must not conflict with each other
@@ -356,7 +356,7 @@ impl DlxBuilder {
         }
         if current == prev_spacer {
             // empty iterator
-            return;
+            return self;
         }
         self.dlx.v_links[prev_spacer].next = current;
         // next spacer
@@ -365,6 +365,19 @@ impl DlxBuilder {
             prev: prev_spacer + 1,
             next: 0,
         });
+        self
+    }
+
+    /// Calls [`Self::add_option`] repeatedly
+    pub fn add_options<'a, I, O>(&mut self, options: I) -> &mut Self
+    where
+        I: IntoIterator<Item = O>,
+        O: IntoIterator<Item = &'a usize>,
+    {
+        for option in options {
+            self.add_option(option);
+        }
+        self
     }
 
     pub fn build(self) -> Dlx {
