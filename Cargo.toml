@@ -1,6 +1,7 @@
 [package]
 name = "xcov"
 description = "Knuth's Algorithm X (dancing links) for solving exact cover problems"
+repository = "https://github.com/jw013/exact-cover-rs"
 keywords = ["exact-cover", "dlx", "dancing-links"]
 categories = ["mathematics"]
 version = "0.2.1"
