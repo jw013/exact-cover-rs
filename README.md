@@ -61,3 +61,29 @@ of Computer Programming, section 7.2.2</cite>,
    into a more usable form for your problem (i.e. the reverse of step 1).
 7. _Optional_: if the last `search` returned true, steps 4-6 can be repeated
    to find more solutions.
+
+## Example
+
+```rust
+# use xcov::*;
+// the following example has exactly one solution
+let mut dlx = DlxBuilder::new(7, 0);
+dlx.add_option(&[      3,    5      ]);
+dlx.add_option(&[1,       4,       7]);
+dlx.add_option(&[   2, 3,       6   ]);
+dlx.add_option(&[1,       4,    6   ]);
+dlx.add_option(&[   2,             7]);
+dlx.add_option(&[         4, 5,    7]);
+
+let mut problem = MrvExactCoverSearch::new(dlx.build());
+problem.search();
+let solution = problem.current_solution().unwrap().into_iter().collect::<Vec<_>>();
+assert_eq!(
+   solution,
+   [
+      &[1, 4, 6][..],
+      &[2, 7],
+      &[3, 5],
+   ]
+);
+```
