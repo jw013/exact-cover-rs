@@ -328,6 +328,13 @@ impl DlxBuilder {
     }
 }
 
+/// Provides a read-only view into the underlying `Dlx`
+impl AsRef<Dlx> for DlxBuilder {
+    fn as_ref(&self) -> &Dlx {
+        &self.dlx
+    }
+}
+
 /// Lower level "dancing links" data structure described by Knuth for solving
 /// exact cover problems.
 ///
