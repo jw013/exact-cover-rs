@@ -299,18 +299,7 @@ impl DlxBuilder {
         self
     }
 
-    /// Calls [`Self::add_option`] repeatedly
-    pub fn add_options<'a, I, O>(&mut self, options: I) -> &mut Self
-    where
-        I: IntoIterator<Item = O>,
-        O: IntoIterator<Item = &'a usize>,
-    {
-        for option in options {
-            self.add_option(option);
-        }
-        self
-    }
-
+    /// Consumes the builder and returns the completed `Dlx`
     pub fn build(self) -> Dlx {
         self.dlx
     }
