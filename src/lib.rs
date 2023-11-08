@@ -256,22 +256,10 @@ impl DlxBuilder {
     /// # Panics
     ///
     /// * If an item index is encountered that is outside the bounds established
-    ///   by the [`new`](Self::new) call (`> n_primary + n_secondary`).
+    ///   by the [`new`](Self::new) call (`1..=n_primary + n_secondary`).
     /// * If option items are not listed in ascending order or include duplicate
     ///   items
     pub fn add_option<'a, I: IntoIterator<Item = &'a usize>>(&mut self, option: I) -> &mut Self {
-        // adding options while a search is in progress is a terrible idea
-        // todo: support pre-selecting options, useful for building some puzzles subtractively
-        //   - pre-selected options must not conflict with each other
-        //   - regular options that conflict with pre-selected options are not added
-        //   - pre-selected option cannot be undone during search
-        // todo: use typestate to enforce this at compile-time
-        //     state - building
-        //       - add_option
-        //       - start search (i.e. select item)
-        //     state - searching item - select item
-        //     state - searching option - select option for current item state
-
         let prev_spacer = self.dlx.v_links.len() - 1;
         let mut prev_item = 0; // 0 is not a valid item so we can use it as -INFINITY
         let mut current = prev_spacer;

@@ -4,6 +4,6 @@ description = "Knuth's Algorithm X (dancing links) for solving exact cover probl
 repository = "https://github.com/jw013/exact-cover-rs"
 keywords = ["exact-cover", "dlx", "dancing-links"]
 categories = ["mathematics"]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "MPL-2.0"
