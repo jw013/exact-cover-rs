@@ -1,5 +1,8 @@
 [package]
-name = "exact-cover"
+name = "xcov"
+description = "Knuth's Algorithm X (dancing links) for solving exact cover problems"
+keywords = ["exact-cover", "dlx", "dancing-links"]
+categories = ["mathematics"]
 version = "0.2.0"
 edition = "2021"
 license = "MPL-2.0"
