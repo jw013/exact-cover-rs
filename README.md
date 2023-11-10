@@ -59,8 +59,8 @@ of Computer Programming, section 7.2.2</cite>,
    [`MrvExactCoverSearch::current_solution`].
 6. The solution is simply a list of options and will need to be mapped back
    into a more usable form for your problem (i.e. the reverse of step 1).
-7. _Optional_: if the last `search` returned true, steps 4-6 can be repeated
-   to find more solutions.
+7. If the last `search` returned true, steps 4-6 can be repeated to find more
+   solutions.
 
 ## Example
 
