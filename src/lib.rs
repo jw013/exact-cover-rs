@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+#![warn(clippy::pedantic)]
+#![deny(rustdoc::broken_intra_doc_links, unsafe_code)]
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
@@ -34,8 +36,7 @@ pub trait ExactCoverProblem {
     ///
     /// [^1]: It is not necessary to branch on the choice of item. All required items will
     /// eventually be covered by any valid solution, so any sequence of item choices will still find
-    /// all solutions. Branching on the item choice would actually cause the same solutions to be
-    /// found multiple times, perhaps with a different ordering of options.
+    /// all solutions.
     fn try_next_item(&mut self) -> bool;
 
     /// Selects an option that covers the current item (i.e. the item selected by the most recent
@@ -68,15 +69,21 @@ pub trait ExactCoverProblem {
     /// manually.
     fn try_undo_option(&mut self) -> bool;
 
-    /// Searches for a solution and returns when one is found or when the entire search tree has
-    /// been exhausted, whichever comes first. Returns true if there is more searching to do, false
-    /// otherwise.
+    /// Searches for a solution and returns when one is found or when the entire
+    /// search tree has been exhausted, whichever comes first. Returns `true` if
+    /// there is more searching to do, `false` otherwise.
     ///
-    /// As long as it returns `true`, this method may be called again to look for additional
-    /// solutions --- each call will resume searching from where the last call returned.
+    /// As long as it returns `true`, this method may be called again to look
+    /// for additional solutions --- each call will resume searching from where
+    /// the last call returned, so long as the underlying type is not mutated in
+    /// any other way in between.
     ///
-    /// The provided implementation is the backtracking exhaustive search algorithm as described in
-    /// Algorithm X, with the lower level operations abstracted away in the other trait methods.
+    /// **Note**: it may seem like the return value indicates whether a solution
+    /// was found and for the most part this does work, except in the degenerate
+    /// case where the problem being solved has no items. Then, the empty set of
+    /// no options will be found as the only valid solution and `false` will be
+    /// returned at the same time because no possible additional solutions are
+    /// possible.
     fn search(&mut self) -> bool {
         // todo: consider possibility of adding profiling and instrumentation like Knuth's version,
         //   e.g. progress indicator, counting of operations (mems), giving up if no solution found
@@ -207,6 +214,7 @@ impl DlxBuilder {
     ///
     /// If too many items (`n_primary + n_secondary`) exceeds memory or `usize`
     /// limitations.
+    #[must_use]
     pub fn new(n_primary: usize, n_secondary: usize) -> Self {
         let n = n_primary.checked_add(n_secondary).expect("Too many items");
         let len = n.checked_add(2).expect("Too many items");
@@ -300,6 +308,7 @@ impl DlxBuilder {
     }
 
     /// Consumes the builder and returns the completed `Dlx`
+    #[must_use]
     pub fn build(self) -> Dlx {
         self.dlx
     }
@@ -411,7 +420,11 @@ impl Dlx {
         self.current_item = Some(item);
     }
 
-    /// Undoes [select_item](Self::select_item).
+    /// Undoes [`select_item`](Self::select_item).
+    ///
+    /// # Panics
+    ///
+    /// If no current item is set (by `select_item`)
     pub fn undo_item(&mut self) {
         let item = self.current_item.expect("Current item must be set");
         self.uncover(item);
@@ -422,7 +435,10 @@ impl Dlx {
     /// available option if `prev` is `None`. Returns `None` if `prev` is the last available option
     /// for the item.
     ///
-    /// This method must not be called if there is no *current item*.
+    /// # Panics
+    ///
+    /// If no current item is set (by `select_item`)
+    #[must_use]
     pub fn next_option(&self, prev: Option<DlxOption>) -> Option<DlxOption> {
         let current_item = self
             .current_item
@@ -477,6 +493,7 @@ impl Dlx {
     }
 
     /// Returns the number of currently available options that include `item`.
+    #[must_use]
     pub fn options_len(&self, item: usize) -> usize {
         debug_assert!(self.is_item(item));
         self.data[item]
@@ -484,11 +501,13 @@ impl Dlx {
 
     /// Returns a slice of options in the currently selected solution, or `None` if not in a solved
     /// state. Use [`option_items`](Self::option_items) to get the items in the option.
+    #[must_use]
     pub fn current_solution(&self) -> Option<&[DlxOption]> {
         (self.h_links[0].next == 0).then_some(&self.selected_options)
     }
 
     /// Returns a slice of item indices in the given option.
+    #[must_use]
     pub fn option_items(&self, option: DlxOption) -> &[usize] {
         let option = option.0;
         debug_assert!(self.is_option(option));
@@ -515,11 +534,10 @@ impl Dlx {
 
     // Removes item from header list and [`hide`]s all of its options
     fn cover(&mut self, item: usize) {
-        debug_assert!(self.is_item(item), "{} must be an item", item);
+        debug_assert!(self.is_item(item), "{item} must be an item");
         debug_assert!(
             !self.h_links.is_removed(item),
-            "item {} must not already be covered",
-            item
+            "item {item} must not already be covered"
         );
         let mut node = self.v_links[item].next;
         while node != item {
@@ -530,12 +548,8 @@ impl Dlx {
     }
 
     fn uncover(&mut self, item: usize) {
-        debug_assert!(self.is_item(item), "{} must be an item", item);
-        debug_assert!(
-            self.h_links.is_removed(item),
-            "item {} must be covered",
-            item
-        );
+        debug_assert!(self.is_item(item), "{item} must be an item");
+        debug_assert!(self.h_links.is_removed(item), "item {item} must be covered");
         let mut node = self.v_links[item].prev;
         while node != item {
             self.unhide(node);
@@ -602,7 +616,7 @@ impl Dlx {
 /// (MRV) heuristic, i.e. items with the fewest available options are selected
 /// first.
 ///
-/// See [Item Selection](trait.ExactCoverProblem.html#item-selection) for more
+/// See [Item Selection](ExactCoverProblem#item-selection) for more
 /// details.
 pub struct MrvExactCoverSearch {
     dlx: Dlx,
@@ -610,7 +624,12 @@ pub struct MrvExactCoverSearch {
 }
 
 impl MrvExactCoverSearch {
-    /// Creates a `MrvExactCoverSearch` from a [`Dlx`] instance.
+    /// Creates a `MrvExactCoverSearch` from a pristine [`Dlx`] instance.
+    ///
+    /// # Panics
+    ///
+    /// If `dlx` has preselected items or options
+    #[must_use]
     pub fn new(dlx: Dlx) -> Self {
         assert!(dlx.selected_options.is_empty() && dlx.current_item.is_none());
         Self {
@@ -621,6 +640,7 @@ impl MrvExactCoverSearch {
 
     /// Returns the current solution (if one has been found) as a collection of
     /// "options", i.e. slices of items they cover.
+    #[must_use]
     pub fn current_solution(&self) -> Option<impl IntoIterator<Item = &[usize]>> {
         self.dlx
             .current_solution()
@@ -642,15 +662,12 @@ impl ExactCoverProblem for MrvExactCoverSearch {
     }
 
     fn select_option_or_undo_item(&mut self) -> bool {
-        match self.dlx.next_option(self.option_cursor) {
-            Some(node) => {
-                self.dlx.select_option(node);
-                true
-            }
-            None => {
-                self.dlx.undo_item();
-                false
-            }
+        if let Some(node) = self.dlx.next_option(self.option_cursor) {
+            self.dlx.select_option(node);
+            true
+        } else {
+            self.dlx.undo_item();
+            false
         }
     }
 
@@ -708,6 +725,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_dlx_knuth_example() {
         let mut x = DlxBuilder::new(7, 0);
         x.add_option(&[3, 5]);
