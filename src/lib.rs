@@ -4,69 +4,82 @@
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
-    /// Chooses the next item to cover, covers it and returns true. Returns false if there are no
-    /// items left to cover (indicating a solution has been found).
+    /// Chooses the next item to cover, covers it and returns true. Returns
+    /// false if there are no items left to cover (indicating a solution has
+    /// been found).
     ///
-    /// "Covering an item" means to remove the item from the set of remaining items to cover and to
-    /// mark all options that include the item as unavailable for covering other items.
+    /// "Covering an item" means to remove the item from the set of remaining
+    /// items to cover and to mark all options that include the item as
+    /// unavailable for covering other items.
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
-    /// manually.
+    /// This method is intended for use by [`search`](Self::search) and is not
+    /// meant to be called manually. After this method is called, it should only
+    /// be followed by `Self::select_option_or_undo_item`.
     ///
     /// # Item Selection
     ///
-    /// A naive exhaustive search could find all solutions by simply selecting options one at a
-    /// time, branching at each step to explore all possibilities. The backtracking `search`
-    /// algorithm is a bit more clever --- it alternates between choosing (without branching)[^1] an
-    /// item to cover and branching on options that cover the selected item. This approach still
-    /// finds every possible solution but with two benefits over the naive approach: (1) it reduces
-    /// the branching factor (number of possible alternatives) since the set of options that cover
-    /// any particular item is usually much smaller than the set of all remaining options, and (2)
-    /// it can detect a dead-end as soon as any item has no remaining options to cover it, and does
-    /// not have to wait until it runs out of all options.
+    /// A naive exhaustive search could find all solutions by simply selecting
+    /// options one at a time, branching at each step to explore all
+    /// possibilities. The backtracking `search` algorithm is a bit more clever
+    /// --- it alternates between choosing (without branching)[^1] an item to
+    /// cover and branching on options that cover the selected item. This
+    /// approach still finds every possible solution but with two benefits over
+    /// the naive approach: (1) it reduces the branching factor (number of
+    /// possible alternatives) since the set of options that cover any
+    /// particular item is usually much smaller than the set of all remaining
+    /// options, and (2) it can detect a dead-end as soon as any item has no
+    /// remaining options to cover it, and does not have to wait until it runs
+    /// out of all options.
     ///
-    /// The branching factor can be reduced by selecting items with few choices for options. Knuth
-    /// calls this the *minimum remaining values (MRV)* heuristic. Reducing the branching factor
-    /// generally results in smaller search trees but there may exist exact cover problems where
-    /// another item-selection strategy is more efficient than MRV (e.g. by trading increased
-    /// branching factor for reduced search depth).
+    /// The branching factor can be reduced by selecting items with few choices
+    /// for options. Knuth calls this the *minimum remaining values (MRV)*
+    /// heuristic. Reducing the branching factor generally results in smaller
+    /// search trees but there may exist exact cover problems where another
+    /// item-selection strategy is more efficient than MRV (e.g. by trading
+    /// increased branching factor for reduced search depth).
     ///
-    /// The item selection strategy can be customized by implementations of this method. See
-    /// [`MrvExactCoverSearch`] for an implementation using the MRV heuristic.
+    /// The item selection strategy can be customized by implementations of this
+    /// method. See [`MrvExactCoverSearch`] for an implementation using the MRV
+    /// heuristic.
     ///
-    /// [^1]: It is not necessary to branch on the choice of item. All required items will
-    /// eventually be covered by any valid solution, so any sequence of item choices will still find
-    /// all solutions.
+    /// [^1]: It is not necessary to branch on the choice of item. All required
+    /// items will eventually be covered by any valid solution, so any sequence
+    /// of item choices will still find all solutions.
     fn try_next_item(&mut self) -> bool;
 
-    /// Selects an option that covers the current item (i.e. the item selected by the most recent
-    /// call to [`try_next_item`](Self::try_next_item)) to add to the current candidate solution,
-    /// then returns true. If there are no more options to try (indicating a dead end and a need to
-    /// backtrack), undoes the most recent `try_next_item` and returns false.
+    /// Selects an option that covers the current item (i.e. the item selected
+    /// by the most recent call to [`try_next_item`](Self::try_next_item)) to
+    /// add to the current candidate solution, then returns true. If there are
+    /// no more options to try (indicating a dead end and a need to backtrack),
+    /// undoes the most recent `try_next_item` and returns false.
     ///
-    /// "Selecting an option" means to cover every item included in the selected option (except for
-    /// the ones that are already covered).
+    /// "Selecting an option" means to cover every item included in the selected
+    /// option (except for the ones that are already covered).
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
-    /// manually.
+    /// This method is intended for use by [`search`](Self::search) and is not
+    /// meant to be called manually.
     ///
-    /// Implementors should track which options have already been tried for the current item to
-    /// avoid redundant computations and infinite loops. Selecting an option that does not cover the
-    /// current item will likely cause the search algorithm to return garbage results.
+    /// Implementors should track which options have already been tried for the
+    /// current item to avoid redundant computations and infinite loops.
+    /// Selecting an option that does not cover the current item will likely
+    /// cause the search algorithm to return garbage results.
     ///
-    /// Implementors are free to filter out options using any additional criteria, which can be
-    /// useful for solving problems that are like exact cover with some extra constraints that
-    /// cannot be captured as items.
+    /// Implementors are free to filter out options using any additional
+    /// criteria, which can be useful for solving problems that are like exact
+    /// cover with some extra constraints that cannot be captured as items.
     fn select_option_or_undo_item(&mut self) -> bool;
 
     /// Undoes the most recent "select option" operation done by
-    /// [`select_option_or_undo_item`](Self::select_option_or_undo_item) and returns true, or does
-    /// nothing and returns false if there is nothing to undo, which indicates either that a search
-    /// has exhausted the all possibilities or that searching has not yet started (due to the
-    /// backtracking nature of the search algorithm, the two conditions are indistinguishable).
+    /// [`select_option_or_undo_item`](Self::select_option_or_undo_item) and
+    /// returns true, or does nothing and returns false if there is nothing to
+    /// undo, which indicates either that a search has exhausted the all
+    /// possibilities or that searching has not yet started (due to the
+    /// backtracking nature of the search algorithm, the two conditions are
+    /// indistinguishable).
     ///
-    /// This method is intended for use by [`search`](Self::search) and is not meant to be called
-    /// manually.
+    /// This method is intended for use by [`search`](Self::search) and is not
+    /// meant to be called manually. It may only be called after
+    /// `Self::select_option_or_undo_item`.
     fn try_undo_option(&mut self) -> bool;
 
     /// Searches for a solution and returns when one is found or when the entire
@@ -77,6 +90,9 @@ pub trait ExactCoverProblem {
     /// for additional solutions --- each call will resume searching from where
     /// the last call returned, so long as the underlying type is not mutated in
     /// any other way in between.
+    ///
+    /// The first thing this method does is call [`Self::try_next_item`]. This
+    /// means `self` must be in a state where such a call would be valid.
     ///
     /// **Note**: it may seem like the return value indicates whether a solution
     /// was found and for the most part this does work, except in the degenerate
@@ -89,44 +105,35 @@ pub trait ExactCoverProblem {
         //   e.g. progress indicator, counting of operations (mems), giving up if no solution found
         //   within time limit.
 
-        if self.try_undo_option() {
-            // goto 'RESUME; // ... but since that is not allowed, duplicate enough of the relevant
-            // code here until we can rejoin the main loop
-            while !self.select_option_or_undo_item() {
-                if !self.try_undo_option() {
-                    return false;
-                }
-            }
-            if !self.try_next_item() {
-                return true;
-            }
-        } else {
-            // start search on a fresh problem
-            if !self.try_next_item() {
-                // empty problem with no items
-                return false;
-            }
-        }
-
-        loop {
-            // recursion loop; expects a successful try_next_item to have already occurred
+        if self.try_next_item() {
+            // goto 'RECURSE, but since goto does not exist, just duplicate the code here
             while self.select_option_or_undo_item() {
                 if !self.try_next_item() {
                     return true;
                 }
             }
-            // unwind / branch loop
+        }
+        // else try_next_item() returned false, indicating we started in a
+        // solved state so need to continue searching for another solution
+
+        loop {
             loop {
+                // unwind / backtrack until the next branch point
                 if !self.try_undo_option() {
                     return false;
                 }
-                // 'RESUME:
                 if self.select_option_or_undo_item() {
                     break;
                 }
             }
             if !self.try_next_item() {
                 return true;
+            }
+            // 'RECURSE
+            while self.select_option_or_undo_item() {
+                if !self.try_next_item() {
+                    return true;
+                }
             }
         }
     }
@@ -194,8 +201,8 @@ impl<'a> LinkIterator<'a> {
 
 /// Opaque handle used by [`Dlx`] to refer to an option.
 ///
-/// Handles are not transferrable across different `Dlx` instances and should be dropped if the
-/// instance they came from is mutated.
+/// Handles are not transferrable across different `Dlx` instances and should be
+/// dropped if the instance they came from is mutated.
 #[derive(Copy, Clone)]
 pub struct DlxOption(usize);
 
@@ -404,15 +411,17 @@ pub struct Dlx {
 impl Dlx {
     /// Covers `item` and sets it as the *current item*.
     ///
-    /// Covering an item removes it from the set of outstanding uncovered items and marks all
-    /// options that contain it as unavailabe for covering other options.
+    /// Covering an item removes it from the set of outstanding uncovered items
+    /// and marks all options that contain it as unavailabe for covering other
+    /// options.
     ///
-    /// The selected item must not already be covered, and there must not be a current item already
-    /// set.
+    /// The selected item must not already be covered, and there must not be a
+    /// current item already set.
     ///
-    /// Note that this method does not actually select an option, so in general, the next step
-    /// after calling this method should be to [`select_option`](Self::select_option) or
-    /// [`undo_item`](Self::undo_item) if no more options are available.
+    /// Note that this method does not actually select an option, so in general,
+    /// the next step after calling this method should be to
+    /// [`select_option`](Self::select_option) or [`undo_item`](Self::undo_item)
+    /// if no more options are available.
     pub fn select_item(&mut self, item: usize) {
         debug_assert!(self.current_item.is_none());
         debug_assert!(self.is_item(item));
@@ -431,9 +440,9 @@ impl Dlx {
         self.current_item = None;
     }
 
-    /// Returns the next available option that includes the *current item*. Returns the first
-    /// available option if `prev` is `None`. Returns `None` if `prev` is the last available option
-    /// for the item.
+    /// Returns the next available option that includes the *current item*.
+    /// Returns the first available option if `prev` is `None`. Returns `None`
+    /// if `prev` is the last available option for the item.
     ///
     /// # Panics
     ///
@@ -455,10 +464,12 @@ impl Dlx {
         (!self.is_item(next)).then_some(DlxOption(next))
     }
 
-    /// Adds option to the candidate solution and covers all uncovered items included in the option.
+    /// Adds option to the candidate solution and covers all uncovered items
+    /// included in the option.
     ///
-    /// This method must only be called when there is a *current item* set, and the option argument
-    /// must include the current item. When called it unsets the current item.
+    /// This method must only be called when there is a *current item* set, and
+    /// the option argument must include the current item. When called it unsets
+    /// the current item.
     pub fn select_option(&mut self, option: DlxOption) {
         let option = option.0;
         debug_assert!(self.is_option(option));
@@ -470,11 +481,12 @@ impl Dlx {
         self.current_item = None;
     }
 
-    /// Undoes the most recent [`select_option`](Self::select_option) and returns the option that
-    /// was deselected, or does nothing and returns `None` if there was nothing to undo.
+    /// Undoes the most recent [`select_option`](Self::select_option) and
+    /// returns the option that was deselected, or does nothing and returns
+    /// `None` if there was nothing to undo.
     ///
-    /// This method must not be called when there is a *current item*. It restores the previous
-    /// current item if an option was undone.
+    /// This method must not be called when there is a *current item*. It
+    /// restores the previous current item if an option was undone.
     pub fn try_undo_option(&mut self) -> Option<DlxOption> {
         debug_assert!(self.current_item.is_none());
         self.selected_options.pop().map(|DlxOption(last_option)| {
@@ -499,8 +511,9 @@ impl Dlx {
         self.data[item]
     }
 
-    /// Returns a slice of options in the currently selected solution, or `None` if not in a solved
-    /// state. Use [`option_items`](Self::option_items) to get the items in the option.
+    /// Returns a slice of options in the currently selected solution, or `None`
+    /// if not in a solved state. Use [`option_items`](Self::option_items) to
+    /// get the items in the option.
     #[must_use]
     pub fn current_solution(&self) -> Option<&[DlxOption]> {
         (self.h_links[0].next == 0).then_some(&self.selected_options)
@@ -575,9 +588,10 @@ impl Dlx {
         });
     }
 
-    /// Calls a closure on every node in the same option/row as the `node` *except* for `node`
-    /// itself. Nodes are traversed "clockwise", i.e. ascending order starting just after the
-    /// argument node and wrapping around. The closure is passed `self` as the first argument.
+    /// Calls a closure on every node in the same option/row as the `node`
+    /// *except* for `node` itself. Nodes are traversed "clockwise", i.e.
+    /// ascending order starting just after the argument node and wrapping
+    /// around. The closure is passed `self` as the first argument.
     fn for_other_cw<F>(&mut self, node: usize, mut f: F)
     where
         F: FnMut(&mut Self, usize),
@@ -624,18 +638,17 @@ pub struct MrvExactCoverSearch {
 }
 
 impl MrvExactCoverSearch {
-    /// Creates a `MrvExactCoverSearch` from a pristine [`Dlx`] instance.
-    ///
-    /// # Panics
-    ///
-    /// If `dlx` has preselected items or options
+    /// Creates a `MrvExactCoverSearch` from a [`Dlx`] instance.
     #[must_use]
     pub fn new(dlx: Dlx) -> Self {
-        assert!(dlx.selected_options.is_empty() && dlx.current_item.is_none());
-        Self {
+        let mut result = Self {
             dlx,
             option_cursor: None,
+        };
+        if result.dlx.current_item.is_some() {
+            result.select_option_or_undo_item();
         }
+        result
     }
 
     /// Returns the current solution (if one has been found) as a collection of
@@ -722,6 +735,14 @@ mod tests {
         assert_eq!(count_items_backward(&x.h_links, 0), 0);
         assert_eq!(count_items_forward(&x.h_links, 1), 0);
         assert_eq!(count_items_backward(&x.h_links, 1), 0);
+        let mut mrv = MrvExactCoverSearch::new(x);
+        assert!(!mrv.search());
+        assert!(mrv
+            .current_solution()
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<_>>()
+            .is_empty());
     }
 
     #[test]
