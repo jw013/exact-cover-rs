@@ -11,3 +11,6 @@ license = "MPL-2.0"
 [[example]]
 name = "sudoku"
 test = true
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
