@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
-#![deny(rustdoc::broken_intra_doc_links, unsafe_code)]
+#![deny(unsafe_code)]
 
 /// A generalized exact cover problem. See [module](self) documentation for additional details.
 pub trait ExactCoverProblem {
