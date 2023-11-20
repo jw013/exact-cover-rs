@@ -280,8 +280,8 @@ impl DlxBuilder {
         let mut current = prev_spacer;
         for &item in option {
             assert!(self.dlx.is_item(item));
-            // The sort requirement may not be strictly necessary, erring on the side of caution
-            // it also makes uniqueness easier to check
+            // The sort requirement may not be strictly necessary, but erring on
+            // the side of caution also makes uniqueness easier to check
             assert!(
                 item > prev_item,
                 "option items must be unique and sorted ascending"
@@ -341,10 +341,11 @@ impl AsRef<Dlx> for DlxBuilder {
 /// modifications to support this extension.
 ///
 /// Because this data structure involves rewriting linked list pointers on the
-/// fly, calling its methods in the wrong order will likely silently corrupt the
-/// links and yield garbage results. Read the documentation on its methods
-/// carefully. Enable [`debug_assert!`] for some additional sanity checks when
-/// debugging.
+/// fly, calling its methods in the wrong order will likely corrupt the internal
+/// links and yield garbage results or even cause infinite loops. Actual memory
+/// corruption is unlikely since no `unsafe` is used. Read the documentation on
+/// each method carefully. Enable [`debug_assert!`] for some additional sanity
+/// checks when debugging.
 
 // ## Implementation Notes
 //
@@ -364,14 +365,14 @@ impl AsRef<Dlx> for DlxBuilder {
 //     PrimaryItemsHeader {
 //         h_link: DoubleIndexLink,
 //     },
-//     SecondaryItemsHeaderAndSpacer {
-//         h_link: DoubleIndexLink,
-//         wrap_links: DoubleIndexLink,
-//     },
 //     ItemColumnHeader {
 //         h_link: DoubleIndexLink,
 //         v_link: DoubleIndexLink,
 //         len: usize,
+//     },
+//     SecondaryItemsHeaderAndSpacer {
+//         h_link: DoubleIndexLink,
+//         wrap_links: DoubleIndexLink,
 //     },
 //     OptionNode {
 //         v_link: DoubleIndexLink,

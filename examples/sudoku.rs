@@ -2,10 +2,11 @@
 //!
 //! [Sudoku] can be solved as a pure exact cover problem. There are 729 options
 //! that correspond to the placement of 9 digits in 81 cells. There are 324
-//! constraints: 81 for cells that must only have 1 digit inside them, 81 for
-//! each pairing of a row and a digit, expressing the constraint that any digit
-//! must appear in each row exactly once, 81 more for the columns, and 81 for
-//! the 3x3 boxes.
+//! items in 4 categories of 81: each of the 81 cells must have 1 digit, each of
+//! the 9 rows must have exactly 1 of each of the 9 digits, each of the 9
+//! columns must have exactly 1 of each of the 9 digits, and each of the 9 3x3
+//! boxes must have exactly 1 of each of the 9 digits. Each option thus covers
+//! exactly 4 items.
 //!
 //! [Sudoku]: <https://en.wikipedia.org/wiki/Sudoku>
 
@@ -56,9 +57,13 @@ pub fn solve(puzzle: &str) -> Option<String> {
     let solution = ec.current_solution()?;
     let mut result = [' '; 81];
     for option in solution {
-        let Ok(option): Result<[usize; 4], _> = option.try_into() else { unreachable!() };
+        let Ok(option): Result<[usize; 4], _> = option.try_into() else {
+            unreachable!()
+        };
         let [cell, digit] = sudoku_invert_items(&option);
-        let Ok(digit): Result<u32, _> = digit.try_into() else { unreachable!() };
+        let Ok(digit): Result<u32, _> = digit.try_into() else {
+            unreachable!()
+        };
         result[cell] = char::from_digit(digit + 1, 10)?;
     }
     Some(result.iter().collect())
@@ -95,7 +100,7 @@ impl<const N: usize> IntSet<N> {
     fn coords(n: usize) -> (usize, u32) {
         let i = n / 64;
         assert!(i < N);
-        let sh = (n % 64).try_into().unwrap();
+        let sh = (n % 64).try_into().expect("mod 64 fits in u32");
         (i, sh)
     }
 

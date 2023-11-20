@@ -31,10 +31,11 @@ select items (i.e. select the item covered by the fewest number of available
 options) is provided with [`MrvExactCoverSearch`]. Its code can be helpful as a
 starting point for custom implementations.
 
-## Example
+## Examples
 
 The following pure exact cover problem is often used as an example in texts by
-Knuth, and consists of 7 items and 6 options.
+Knuth, and consists of 7 items and 6 options. For a more practical application,
+see `examples/sudoku.rs`.
 
 ```rust
 # use xcov::*;
@@ -58,4 +59,8 @@ assert_eq!(
       &[3, 5],
    ]
 );
+
+// can look for additional solutions but this problem has none
+assert!(!problem.search());
+assert!(problem.current_solution().is_none());
 ```
