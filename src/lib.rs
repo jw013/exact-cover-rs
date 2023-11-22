@@ -333,8 +333,8 @@ impl AsRef<Dlx> for DlxBuilder {
 ///
 /// You probably don't need to work with this type directly unless you are
 /// creating a custom implementation of [`ExactCoverProblem`]. See
-/// [module](self) documentation for additional details on how to use the
-/// default implementation.
+/// [module](self) documentation for an example using the provided
+/// implementation.
 ///
 /// `Dlx` supports optional secondary items which can be covered 0 or 1 times in
 /// a valid solution, as the [`ExactCoverProblem::search`] algorithm needs no
@@ -342,10 +342,10 @@ impl AsRef<Dlx> for DlxBuilder {
 ///
 /// Because this data structure involves rewriting linked list pointers on the
 /// fly, calling its methods in the wrong order will likely corrupt the internal
-/// links and yield garbage results or even cause infinite loops. Actual memory
-/// corruption is unlikely since no `unsafe` is used. Read the documentation on
-/// each method carefully. Enable [`debug_assert!`] for some additional sanity
-/// checks when debugging.
+/// links. While undefined behavior is unlikely since no `unsafe` code is used,
+/// incorrect results and even infinite loops are likely after a corruption.
+/// Read the documentation on each method carefully to avoid this. Enable
+/// [`debug_assert!`] for some additional sanity checks when debugging.
 
 // ## Implementation Notes
 //

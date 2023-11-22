@@ -39,18 +39,21 @@ see `examples/sudoku.rs`.
 
 ```rust
 # use xcov::*;
-// the following example has exactly one solution
-let mut dlx = DlxBuilder::new(7, 0);
-dlx.add_option(&[      3,    5      ]);
-dlx.add_option(&[1,       4,       7]);
-dlx.add_option(&[   2, 3,       6   ]);
-dlx.add_option(&[1,       4,    6   ]);
-dlx.add_option(&[   2,             7]);
-dlx.add_option(&[         4, 5,    7]);
+let mut builder = DlxBuilder::new(7, 0);
+builder.add_option(&[      3,    5      ]);
+builder.add_option(&[1,       4,       7]);
+builder.add_option(&[   2, 3,       6   ]);
+builder.add_option(&[1,       4,    6   ]);
+builder.add_option(&[   2,             7]);
+builder.add_option(&[         4, 5,    7]);
 
-let mut problem = MrvExactCoverSearch::new(dlx.build());
+let mut problem = MrvExactCoverSearch::new(builder.build());
 problem.search();
-let solution = problem.current_solution().unwrap().into_iter().collect::<Vec<_>>();
+let solution = problem
+   .current_solution()
+   .expect("this example problem has a solution")
+   .into_iter()
+   .collect::<Vec<_>>();
 assert_eq!(
    solution,
    [
