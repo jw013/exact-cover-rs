@@ -59,10 +59,10 @@ pub trait ExactCoverProblem {
     /// This method is intended for use by [`search`](Self::search) and is not
     /// meant to be called manually.
     ///
-    /// Implementors should track which options have already been tried for the
-    /// current item to avoid redundant computations and infinite loops.
+    /// Implementors must track which options have already been tried for the
+    /// current item to avoid sending `search` into any infinite loops.
     /// Selecting an option that does not cover the current item will likely
-    /// cause the search algorithm to return garbage results.
+    /// cause the search algorithm to return incorrect results.
     ///
     /// Implementors are free to filter out options using any additional
     /// criteria, which can be useful for solving problems that are like exact
@@ -416,13 +416,15 @@ impl Dlx {
     /// and marks all options that contain it as unavailabe for covering other
     /// options.
     ///
-    /// The selected item must not already be covered, and there must not be a
-    /// current item already set.
-    ///
     /// Note that this method does not actually select an option, so in general,
     /// the next step after calling this method should be to
     /// [`select_option`](Self::select_option) or [`undo_item`](Self::undo_item)
     /// if no more options are available.
+    ///
+    /// # Requirements
+    ///
+    /// The selected item must not already be covered, and there must not be a
+    /// current item already set.
     pub fn select_item(&mut self, item: usize) {
         debug_assert!(self.current_item.is_none());
         debug_assert!(self.is_item(item));
@@ -466,11 +468,12 @@ impl Dlx {
     }
 
     /// Adds option to the candidate solution and covers all uncovered items
-    /// included in the option.
+    /// included in the option. Unsets the current item.
     ///
-    /// This method must only be called when there is a *current item* set, and
-    /// the option argument must include the current item. When called it unsets
-    /// the current item.
+    /// # Requirements
+    ///
+    /// There must be a *current item* and the `option` argument must cover the
+    /// current item.
     pub fn select_option(&mut self, option: DlxOption) {
         let option = option.0;
         debug_assert!(self.is_option(option));
@@ -483,11 +486,13 @@ impl Dlx {
     }
 
     /// Undoes the most recent [`select_option`](Self::select_option) and
-    /// returns the option that was deselected, or does nothing and returns
-    /// `None` if there was nothing to undo.
+    /// returns the option that was deselected after restoring the previous
+    /// current item, or does nothing and returns `None` if there was nothing to
+    /// undo.
     ///
-    /// This method must not be called when there is a *current item*. It
-    /// restores the previous current item if an option was undone.
+    /// # Requirements
+    ///
+    /// There must not be a *current item*.
     pub fn try_undo_option(&mut self) -> Option<DlxOption> {
         debug_assert!(self.current_item.is_none());
         self.selected_options.pop().map(|DlxOption(last_option)| {
