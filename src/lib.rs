@@ -321,6 +321,12 @@ impl DlxBuilder {
     }
 }
 
+impl From<DlxBuilder> for Dlx {
+    fn from(value: DlxBuilder) -> Self {
+        value.build()
+    }
+}
+
 /// Provides a read-only view into the underlying `Dlx`
 impl AsRef<Dlx> for DlxBuilder {
     fn as_ref(&self) -> &Dlx {
