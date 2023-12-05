@@ -1,7 +1,7 @@
 # Exact Cover
 
 This crate provides an implementation of Knuth's [Algorithm X] for solving
-[exact cover problems].
+[exact cover] problems.
 
 The algorithms and data structures in this module, as well as the
 terminology of "options" and "items", come from Donald Knuth's <cite>The Art
@@ -9,7 +9,7 @@ of Computer Programming, section 7.2.2</cite>,
 <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
 
 [Algorithm X]: https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X
-[exact cover problem]: https://en.wikipedia.org/wiki/Exact_cover
+[exact cover]: https://en.wikipedia.org/wiki/Exact_cover
 
 * No dependencies
 * 100% safe Rust

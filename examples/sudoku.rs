@@ -55,18 +55,16 @@ pub fn solve(puzzle: &str) -> Option<String> {
     ec.search();
 
     let solution = ec.current_solution()?;
-    let mut result = [' '; 81];
+    let mut result = vec![b' '; 81];
+    const DIGIT_BYTES: &[u8] = b"123456789";
     for option in solution {
         let Ok(option): Result<[usize; 4], _> = option.try_into() else {
             unreachable!()
         };
         let [cell, digit] = sudoku_invert_items(&option);
-        let Ok(digit): Result<u32, _> = digit.try_into() else {
-            unreachable!()
-        };
-        result[cell] = char::from_digit(digit + 1, 10)?;
+        result[cell] = DIGIT_BYTES[digit];
     }
-    Some(result.iter().collect())
+    Some(String::from_utf8(result).expect("valid utf8 that we constructed ourselves"))
 }
 
 /// Converts a sudoku cell and digit into its 4 items
