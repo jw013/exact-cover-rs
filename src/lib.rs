@@ -2,7 +2,8 @@
 #![warn(clippy::pedantic)]
 #![deny(unsafe_code)]
 
-/// A generalized exact cover problem. See [module](self) documentation for additional details.
+/// A generalized exact cover problem. See [module](self) documentation for
+/// additional details.
 pub trait ExactCoverProblem {
     /// Chooses the next item to cover, covers it and returns true. Returns
     /// false if there are no items left to cover (indicating a solution has
@@ -101,9 +102,9 @@ pub trait ExactCoverProblem {
     /// returned at the same time because no possible additional solutions are
     /// possible.
     fn search(&mut self) -> bool {
-        // todo: consider possibility of adding profiling and instrumentation like Knuth's version,
-        //   e.g. progress indicator, counting of operations (mems), giving up if no solution found
-        //   within time limit.
+        // todo: consider possibility of adding profiling and instrumentation like
+        // Knuth's version,   e.g. progress indicator, counting of operations
+        // (mems), giving up if no solution found   within time limit.
 
         if self.try_next_item() {
             // goto 'RECURSE, but since goto does not exist, just duplicate the code here
@@ -234,7 +235,8 @@ impl DlxBuilder {
         };
 
         // Initialize hlinks to two separate circular doubly linked lists:
-        // primary items list has 0 as its header node; secondary items list header is at n + 1
+        // primary items list has 0 as its header node; secondary items list header is
+        // at n + 1
         dlx.h_links.push(DoubleIndexLink {
             prev: n_primary,
             next: 1,
@@ -355,16 +357,18 @@ impl AsRef<Dlx> for DlxBuilder {
 
 // ## Implementation Notes
 //
-// The data structure is conceptually an incidence matrix with columns corresponding to items and
-// rows corresponding to options. Internally, the matrix is represented in a "sparse" condensed
-// layout with non-zero entries converted to linked list nodes and empty / zero entries omitted. The
-// first row consists of item column headers and is joined into two circularly linked lists
-// (separate lists for primary and secondary items) with a separate header node for each list that
-// does not correspond to any item. Each item column is joined as a circularly linked list using the
-// item header as the list header node. "Spacer" pointer nodes are inserted around each option row
-// to facilitate wrapping around when iterating over rows, but option rows are not otherwise linked
-// because their layout is already contiguous. In other words, the sparse matrix format is
-// conceptually a `Vec<DlxNode>`:
+// The data structure is conceptually an incidence matrix with columns
+// corresponding to items and rows corresponding to options. Internally, the
+// matrix is represented in a "sparse" condensed layout with non-zero entries
+// converted to linked list nodes and empty / zero entries omitted. The
+// first row consists of item column headers and is joined into two circularly
+// linked lists (separate lists for primary and secondary items) with a separate
+// header node for each list that does not correspond to any item. Each item
+// column is joined as a circularly linked list using the item header as the
+// list header node. "Spacer" pointer nodes are inserted around each option row
+// to facilitate wrapping around when iterating over rows, but option rows are
+// not otherwise linked because their layout is already contiguous. In other
+// words, the sparse matrix format is conceptually a `Vec<DlxNode>`:
 //
 // ```
 // enum DlxNode {
@@ -390,28 +394,34 @@ impl AsRef<Dlx> for DlxBuilder {
 // }
 // ```
 //
-// However, the actual sparse matrix is laid out in Structure of Arrays format instead of Array of
-// Structures simply because that is how Knuth described it (it's also a bit more memory efficient).
+// However, the actual sparse matrix is laid out in Structure of Arrays format
+// instead of Array of Structures simply because that is how Knuth described it
+// (it's also a bit more memory efficient).
 //
-// List pointers are implemented as integer indices into Vec's. Items occupy indices 1..=num_items,
-// followed immediately by option and spacer nodes. The PrimaryItemsHeader is always index 0, while
-// the SecondaryItemsHeaderAndSpacer is index `num_items + 1` and pulls double duty as the first
-// spacer node for the first option row.
+// List pointers are implemented as integer indices into Vec's. Items occupy
+// indices 1..=num_items, followed immediately by option and spacer nodes. The
+// PrimaryItemsHeader is always index 0, while the SecondaryItemsHeaderAndSpacer
+// is index `num_items + 1` and pulls double duty as the first spacer node for
+// the first option row.
 pub struct Dlx {
     /// horizontal links for item header row
     h_links: Vec<DoubleIndexLink>,
-    /// vertical links for columns of item and option nodes; spacer nodes use this for wrap links
+    /// vertical links for columns of item and option nodes; spacer nodes use
+    /// this for wrap links
     v_links: Vec<DoubleIndexLink>,
-    /// the meaning of data depends on the node type: for ordinary nodes it points to its item; for
-    /// spacers, it is 0; for items it is the number of ordinary nodes currently in the column.
+    /// the meaning of data depends on the node type: for ordinary nodes it
+    /// points to its item; for spacers, it is 0; for items it is the number
+    /// of ordinary nodes currently in the column.
     ///
-    /// todo: This overloading of meaning is a bit ugly and could use a rework to improve clarity
+    /// todo: This overloading of meaning is a bit ugly and could use a rework
+    /// to improve clarity
     data: Vec<usize>,
     /// stack of selected options
     selected_options: Vec<DlxOption>,
-    /// item most recently selected by select_item and which does not have a selected option yet;
-    /// don't need a full stack of items because items can be computed from the selected_options
-    /// stack, except for the case when an item has been selected but an option has not
+    /// item most recently selected by select_item and which does not have a
+    /// selected option yet; don't need a full stack of items because items
+    /// can be computed from the selected_options stack, except for the case
+    /// when an item has been selected but an option has not
     current_item: Option<usize>,
 }
 
@@ -620,7 +630,8 @@ impl Dlx {
         }
     }
 
-    /// like [`for_other_cw`] but in the opposite direction, suitable for undoing
+    /// like [`for_other_cw`] but in the opposite direction, suitable for
+    /// undoing
     fn for_other_ccw<F>(&mut self, node: usize, mut f: F)
     where
         F: FnMut(&mut Self, usize),
