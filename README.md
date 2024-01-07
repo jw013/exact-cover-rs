@@ -5,8 +5,7 @@ This crate provides an implementation of Knuth's [Algorithm X] for solving
 
 The algorithms and data structures in this module, as well as the
 terminology of "options" and "items", come from Donald Knuth's <cite>The Art
-of Computer Programming, section 7.2.2</cite>,
-<https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
+of Computer Programming, section 7.2.2.1 "Dancing Links"</cite>[^1].
 
 [Algorithm X]: https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X
 [exact cover]: https://en.wikipedia.org/wiki/Exact_cover
@@ -30,6 +29,9 @@ A ready-to-use implementation using the *minimum remaining values* heuristic to
 select items (i.e. select the item covered by the fewest number of available
 options) is provided with [`MrvExactCoverSearch`]. Its code can be helpful as a
 starting point for custom implementations.
+
+[^1]: A pre-print is accessible at
+<https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
 
 ## Examples
 

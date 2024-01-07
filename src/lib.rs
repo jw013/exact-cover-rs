@@ -103,8 +103,8 @@ pub trait ExactCoverProblem {
     /// possible.
     fn search(&mut self) -> bool {
         // todo: consider possibility of adding profiling and instrumentation like
-        // Knuth's version,   e.g. progress indicator, counting of operations
-        // (mems), giving up if no solution found   within time limit.
+        // Knuth's version, e.g. progress indicator, counting of operations
+        // (mems), giving up if no solution found within time limit.
 
         if self.try_next_item() {
             // goto 'RECURSE, but since goto does not exist, just duplicate the code here
