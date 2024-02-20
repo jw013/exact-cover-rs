@@ -99,8 +99,7 @@ pub trait ExactCoverProblem {
     /// was found and for the most part this does work, except in the degenerate
     /// case where the problem being solved has no items. Then, the empty set of
     /// no options will be found as the only valid solution and `false` will be
-    /// returned at the same time because no possible additional solutions are
-    /// possible.
+    /// returned at the same time because no additional solutions are possible.
     fn search(&mut self) -> bool {
         // todo: consider possibility of adding profiling and instrumentation like
         // Knuth's version, e.g. progress indicator, counting of operations
@@ -127,13 +126,13 @@ pub trait ExactCoverProblem {
                     break;
                 }
             }
-            if !self.try_next_item() {
-                return true;
-            }
-            // 'RECURSE
-            while self.select_option_or_undo_item() {
+            loop {
                 if !self.try_next_item() {
                     return true;
+                }
+                // 'RECURSE
+                if !self.select_option_or_undo_item() {
+                    break;
                 }
             }
         }
