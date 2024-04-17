@@ -33,6 +33,10 @@ starting point for custom implementations.
 [^1]: A pre-print is accessible at
 <https://www-cs-faculty.stanford.edu/~knuth/fasc5c.ps.gz>.
 
+[`ExactCoverProblem::search`]: https://docs.rs/xcov/latest/xcov/trait.ExactCoverProblem.html#method.search
+[`Dlx`]: https://docs.rs/xcov/latest/xcov/struct.Dlx.html
+[`MrvExactCoverSearch`]: https://docs.rs/xcov/latest/xcov/struct.MrvExactCoverSearch.html
+
 ## Examples
 
 The following pure exact cover problem is often used as an example in texts by

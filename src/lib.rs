@@ -1,3 +1,6 @@
+//! [ExactCoverProblem::search]: method@ExactCoverProblem::search
+//! [Dlx]: Dlx
+//! [MrvExactCoverSearch]: MrvExactCoverSearch
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
