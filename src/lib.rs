@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 /// A generalized exact cover problem. See [module](self) documentation for
 /// additional details.
